@@ -44,7 +44,36 @@ and hey presto, a functional standing desk practically for free.</p>
 <p>I masked off the top panel in each door to let the white undercoat show through for the top windows(?). A black POLICE BOX 
   roof sign and the white FOR USE OF PUBLIC door signs were printed off and the Tardis was complete. Even more complete that Xmas 
 when I was gifted a revolving police light.</p>
-
+<h3>Becoming Interactive</h3>
+<p>So the outside was done and gave me a little lift every time I walked past the spare room and saw my own Tardis brooding in the 
+  corner - believe me you do need something to make you smile every now and then if you work from home for any length of time.</p>
+<p>When I thought about my memories of the Tardis in the 70s and 80s, it was all dials, knobs, gauges and screens. I started to 
+    browse eBay looking for old equipment panels to decorate the blank spaces in the desks. I managed to get a job-lot of old moving coil gauges and aircraft equipment and laid them out on some plywood cut to fit
+    the gap in the desk.</p>
+<p>Now I'm not sure what sparked the original idea but I have been acquiring Raspberry Pis since the first models came out 
+  but had never done anything with the GPIO pins - due to a lack of knowledge and a suitable project. I saw that some people 
+  had used Pis to drive old gauges for clocks and bandwidth monitors and wondered if I could do something similar.</p>
+<p>I read up about it, got myself a carton of 600+ resistors of different ratings and a bunch of dupont cables. Granted I 
+    should have done this properly and read the rating of each gauge and calculated the correct resistor to use, but I just went with
+    trial and error - starting with the largest size, switching the pin on and seeing if and how far the needle moved.</p>
+<p>Once I had sorted out and made notes of the resistors, put the dead gauges to one side and laid out the good gauges, I cut the plywood 
+    to allow the gauges to sit slightly proud and leave the contact free at the back. I just happened to have an enormous roll 
+    of metallic "sticky-back paper", so I applied that to the plywood to create a fake metal panel for the gauges to sit on.</p>
+<p>I decided what to indicate with each gauge and Dymo's some labels and wired it all up. To my astonishment, one Pi B was able to 
+    handle a dozen gauges, a physical switch and a bunch of LEDs simultaneously (as well as running MPD and Mercurial servers in the 
+    background).
+          <h3>The gauges and the code</h3>
+          <ul>
+              <li>CPU and GPU temperatures (scaled to indicate max as 100C)</li>
+              <li>CPU load (scaled to indicate max as 100%)</li>
+              <li>RAM usage</li>
+              <li>Network usage in and out</li>
+              <li>VPN usage</li>
+              <li>Disk usage</li>
+              <li>Outside temperature</li>
+              <li>The inevitable clock - using 2 gauges and 3 LEDs</li>
+          </ul>
+          
       </section>
     </div>
 
