@@ -7,9 +7,9 @@
     <link rel="stylesheet" type="text/css" media="screen" href="/TardisDesk/assets/css/style.css?v=b6db1b269f812109216ea89ccfd04948be0f69dc">
     <title>TardisDesk</title>
     <style type="text/css">
-      .inner {
+    .inner {
         max-width: 800px;
-      }
+    }
     </style>
 </head>
 
@@ -43,23 +43,76 @@
             <p>I read up about it, got myself a carton of 600+ resistors of different ratings and a bunch of dupont cables. Granted I should have done this properly and read the rating of each gauge and calculated the correct resistor to use, but I just went with trial and error - starting with the largest size, switching the pin on and seeing if and how far the needle moved.</p>
             <p>Once I had sorted out and made notes of the resistors, put the dead gauges to one side and laid out the good gauges, I cut the plywood to allow the gauges to sit slightly proud and leave the contact free at the back. I just happened to have an enormous roll of metallic "sticky-back paper", so I applied that to the plywood to create a fake metal panel for the gauges to sit on.</p>
             <img src="images/instrument_panel.jpg">
-            <p>I decided what to indicate with each gauge and Dymo'd some labels and wired it all up. To my astonishment, one Pi B was able to handle a dozen gauges, a physical switch and a bunch of LEDs simultaneously (as well as running MPD and Mercurial servers in the background).
+            <p>I decided what to indicate with each gauge and Dymo'd some labels and wired it all up. To my astonishment, one Pi B was able to handle a dozen gauges, a physical switch and a bunch of LEDs simultaneously (as well as running MPD and Mercurial servers in the background).</p>
             <img src="images/dymo_labels.jpg">
-                <h3>The gauges and the code</h3>
-                <ul>
-                    <li>CPU and GPU temperatures (scaled to indicate max as 100C)</li>
-                    <li>CPU load (scaled to indicate max as 100%)</li>
-                    <li>RAM usage</li>
-                    <li>Network usage in and out</li>
-                    <li>VPN usage</li>
-                    <li>Disk usage</li>
-                    <li>Outside temperature</li>
-                    <li>The inevitable clock - using 2 gauges and 3 LEDs for over-engineering points</li>
-                </ul>
-                <p>The basic principle for driving a moving coil gauge is to connect the postive and negative contacts to a GPIO pin (via a resistor) and ground respectively and then send a PWM signal via GPIO to move the needle. I used a Pi-Cobbler to connect the pi to a breadboard. My first attempt involved fitting the resistors between 2 female-ended dupont wires but the wiring became completely chaotic and kept snagging and breaking the connections.</p>
-                <img src="images/inline_resistors.jpg">
-                <p>My second attempt involved inserting the resistors into the breadboard and using short M-M dupont wires to connect to the GPIO pins and ground rails. This allowed me to tidy up the wiring so that they would not cross (in theory) but the end result was still spaghetti.</p>
-                <img src="images/spaghetti.jpg">
+            <h3>The gauges and the code</h3>
+            <ul>
+                <li>CPU and GPU temperatures (scaled to indicate max as 100C)</li>
+                <li>CPU load (scaled to indicate max as 100%)</li>
+                <li>RAM usage</li>
+                <li>Network usage in and out</li>
+                <li>VPN usage</li>
+                <li>Disk usage</li>
+                <li>Outside temperature</li>
+                <li>The inevitable clock - using 2 gauges and 3 LEDs for over-engineering points</li>
+            </ul>
+            <p>The basic principle for driving a moving coil gauge is to connect the postive and negative contacts to a GPIO pin (via a resistor) and ground respectively and then send a PWM signal via GPIO to move the needle. I used a Pi-Cobbler to connect the pi to a breadboard. My first attempt involved fitting the resistors between 2 female-ended dupont wires but the wiring became completely chaotic and kept snagging and breaking the connections.</p>
+            <img src="images/inline_resistors.jpg">
+            <p>My second attempt involved inserting the resistors into the breadboard and using short M-M dupont wires to connect to the GPIO pins and ground rails. This allowed me to tidy up the wiring so that they would not cross (in theory) but the end result was still spaghetti.</p>
+            <img src="images/spaghetti.jpg">
+            <h3>Switches and dials</h3>
+            <p>So far, so good. We have lots of outputs updating in near real-time, but how about adding some input controls?</p>
+            <p>Something I have to do every time I work from home is connect to the VPN at work, so how about making a switch for this? Obviously it couldn't be any ordinary toggle switch, it had to be a missile switch with a flip cover</p>
+            <img src="images/vpn_switch">
+            <p>Over to the right I added an illuminated toggle switch to switch off the privoxy server running on another Pi, through which my daughter's devices connect to the web. This enables me to make good on the almost daily threat: <em>"If you don't brush your teeth, I'm turning the internet off"</em>.</p>
+            <p>The last input was a good deal more complex. I wanted to use at least on of the rheostats on the Muirhead radio test set to control the volume of my sound card (despite having a dedicated volume control knob on my desk as well as volume buttons on one of my keyboards). I had some vague idea about the knobs varying resistance as measured with a multimeter, but I had run out of pins on my Pi and didn't really know how to approach it, so I put it on the back burner.</p>
+            <p>A few months later I was really into cheap Arduino clones, especially the NodeMCU variants, and stumbled upon <a href="https://forum.arduino.cc/index.php?topic=52985.0">this question</a> in the Arduino forums. That gave me the confidence to try hooking up the Muirhead rheostat(s) to the analog pin on a NodeMCU using (what I think is) a voltage divider. It detects changes in the position of 2 of the rheostats and sends a request to the PC (via the Pi) to adjust its volume. One dial controls large volume adjustments and the other fine adjustments. This is of course completely pointless, I just wanted to see if it was possible and how to do it.</p>
+            <pre><code>
+//Arduino code for NodeMCU reading the Muirhead rheostats
+
+int muirhead;
+int lastDialValue = 0;
+
+void setVolume() {
+  Serial.println(muirhead);
+  Serial.println("http://192.168.1.83:8884/?value=" + (String)muirhead);
+  HTTPClient http;
+  http.begin("http://192.168.1.83:8884/?value=" + (String)muirhead);
+  int httpCode = http.GET();  
+  Serial.println(httpCode);
+}
+
+void loop() {
+  muirhead = analogRead(A0);
+  if (abs(muirhead - lastDialValue) > 20) {
+    setVolume();
+    lastDialValue = muirhead;
+  }
+}              
+            </code></pre>
+            <pre><code>
+//node.js code on the Pi that responds to requests from the NodeMCU 
+//and translates the parameter into a volume value to be set over ssh              
+
+function volumeLevel(dialValue) {
+//the NodeMCU analog reading is from 0 to 1024 (in reverse order)
+//7.3 is a scalar arrived at by trial and error
+//to translate this to a suitable percentage
+  return Math.floor((1024 - dialValue) / 7.3);
+}
+
+var server = http.createServer(function (request, response) {
+  console.dir(request.url);
+  var value = url.parse(request.url, true).query.value;
+  if (value) {
+    console.log("setting volume " + value);
+    sshCall("pactl set-sink-volume 0 " + volumeLevel(value) + "%");
+      console.log("volume set");
+  }
+  response.writeHead(200, {'Content-Type': 'text/plain'});
+    response.end("OK");
+});
+            </code></pre>
         </section>
     </div>
     <!-- FOOTER  -->
