@@ -380,7 +380,183 @@ vncserver -geometry  1280x720
 sleep 5
 x2x -south -to :3 &
             </code></pre>
-            <p>Occasionally I run a synergy client on the (rooted) Nook HD+ to gain keyboard and mouse control but more often than not, it's simply used natively as an Android Slack client. These extra small screens allow me to display things I need to keep an eye on, such as server logs when testing or the Pi camera in the lounge to make sure the cat an the dog are not tearing the place up while I'm working.</p>
+            <p>Occasionally I run a synergy client on the (rooted) Nook HD+ to gain keyboard and mouse control but more often than not, it's simply used natively as an Android Slack client. These extra small screens allow me to display things I need to keep an eye on, such as server logs when testing or the Pi (yes another one) camera in the lounge to make sure the cat and the dog are not tearing the place up while I'm working upstairs.</p>
+            <h3>Enter Arduino</h3>
+            <p>More often than not, when investigating Pi hardware projects, there is usually a dismissive comment along the lines of "Pfft, overkill, why not use an Arduino?". My curiosity piqued, I treated myself to a birthday present of an Arduino Uno starter kit plus a box of sensors. Well, that opened a can of worms.</p>
+            <p>Included in the kit was a 1602 LCD display and while learning how to wire it up and drive it, I thought it would go nicely on one of the Tardis doors to provide even lower-level alerts, such as room temperatures (there were DHT-11 sensors in the kit) or the status of my Jenkins CI projects at work.</p>
+            <p>Having to keep the Arduino connected via USB was a pain and the wifi shields were inexcusably expensive, so I started to look for options with built-in wifi. I settle on the NodeMCU and the Witty WiFi Cloud (yes, seriously) as they were both Arduino clones, had GPIO pins and wifi and were cheap. Very, very very cheap. So I ordered a few.</p>
+            <p>My first wifi-enabled mini-screen project was to be an international cricket score display. I hooked up a NodeMCU to the 1602 screen using a million dupont wires and attached a potentiometer to use to scroll through updates for each Test nation. The NodeMCU polls the cricinfo RSS page for international cricket scores, parses out the name and score for each team and reformats it for the display.</p>
+            <pre><code>
+#include &lt;ESP8266WiFi.h&gt;
+#include &lt;LiquidCrystal.h&gt;
+#include &lt;ESP8266HTTPClient.h&gt;
+
+#define HOSTNAME "nodeCricketer" 
+const char* ssid = "SSID";
+const char* password = "PASSWORD";
+
+unsigned long Timer;
+unsigned long SleepTimer;
+const String char16 = "                ";
+
+LiquidCrystal lcd(D2, D8, D4, D5, D6, D7);
+
+//Define the pin connection for the rotary
+int CLK = D3;
+int DT = D1;
+int SW = D0;
+const int interrupt0 = 0;//
+int count = 0;//Define the count
+int lastCLK = 0;//CLK initial value
+bool clicked = false;
+
+String latestScores = "";
+
+void setup() {
+  pinMode(SW, INPUT);
+  digitalWrite(SW, HIGH);
+  pinMode(CLK, INPUT);
+  pinMode(DT, INPUT);
+  //Set the interrupt 0 handler, trigger level change
+  attachInterrupt(interrupt0, ClockChanged, CHANGE);
+  
+  Serial.begin (9600);
+ 
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  while (WiFi.waitForConnectResult() != WL_CONNECTED){
+    WiFi.begin(ssid, password);
+    Serial.println("Retrying connection...");
+  }
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  Serial.println("Ready");
+
+  lcd.begin(16, 2);
+  lcd.print("NODE CRICKETER");
+  lcd.setCursor(0,1);
+  lcd.print(WiFi.localIP().toString());
+
+  getLatestScores();
+}
+
+String searchTitles(String searchWord) {
+  String searchString = latestScores;
+  String titles = "";
+  searchWord += " ";
+  int wordFound = searchString.indexOf(searchWord);
+  if (wordFound &lt; 0) {
+    return "No " + searchWord + " score";
+  }
+  searchString = searchString.substring(wordFound, wordFound + 512);
+  Serial.println(searchString);
+  while (searchString.indexOf("&lt;description&gt;") &gt; -1) {
+    int titleStart = searchString.indexOf("&lt;description&gt;");
+    int titleEnd = searchString.indexOf("&lt;/description&gt;") + 14;
+    String searchTitle = searchString.substring(titleStart, titleEnd);
+    Serial.println(searchTitle);
+    if (searchTitle.indexOf(searchWord) &gt; -1) {
+      Serial.println(searchTitle);
+      return searchTitle.substring(13, searchTitle.length() - 14);
+    }
+    searchString = searchString.substring(titleEnd);
+  }
+  return "No " + searchWord + " score";
+}
+
+String cleanScore(String fullScore) {
+  fullScore.replace("  ", " ");
+  fullScore.replace("amp;", "");
+  fullScore.replace("/10", "");
+  fullScore.replace(" *", "*");
+  fullScore.replace("England", "ENG");
+  fullScore.replace("Bangladesh", "BAN");
+  fullScore.replace("Afghanistan", "AFG");
+  fullScore.replace("United Arab Emirates", "UAE");
+  fullScore.replace("India", "IND");
+  fullScore.replace("Australia", "AUS");
+  fullScore.replace("New Zealand", "NZ");
+  fullScore.replace("South Africa", "RSA");
+  fullScore.replace("Pakistan", "PAK");
+  fullScore.replace("Sri Lanka", "SRI");
+  fullScore.replace("West Indies", "WI");
+  fullScore.replace("Zimbabwe", "ZIM");
+  fullScore.replace(" Women", "w");
+  fullScore.replace("Cricket ", "");
+  fullScore.replace(" XI", "xi");
+  return fullScore;
+}
+
+String teams[] = {"England", "Australia", "Bangladesh", 
+  "India", "New Zealand", "Pakistan", 
+  "South Africa", "Sri Lanka", "West Indies", "Zimbabwe"};
+int teamIndex = 0;
+
+void getLatestScores() {
+  Serial.println("Getting latest scores");
+  HTTPClient http;
+  http.begin("http://static.cricinfo.com/rss/livescores.xml");
+  int httpCode = http.GET();
+  Serial.println(httpCode);
+  if(httpCode &gt; 0) {
+      if(httpCode == HTTP_CODE_OK) {
+          latestScores = http.getString();
+      }
+  }
+  getTeamScore(teams[teamIndex]);
+}
+
+void getTeamScore(String teamName) {
+  Serial.print("Getting score for ");
+  Serial.println(teamName);
+  String teamScore = searchTitles(teamName);
+  Timer = millis();
+  lcd.clear();
+  lcd.display();
+  lcd.setCursor(0,0);
+  teamScore = cleanScore(teamScore);
+  int versus = teamScore.indexOf(" v ");
+  lcd.print(teamScore.substring(0, versus));
+  if (teamScore.substring(0,3) != "No ") {
+    lcd.setCursor(0,1);
+    lcd.print(teamScore.substring(versus + 3));  
+  }
+}
+
+void loop() {
+  if (!digitalRead(SW) && !clicked)
+  //Read the button press and the count value to 0 when the counter reset
+  {
+    clicked = true;
+    count = 0;
+    Serial.println("REFRESH");
+    getLatestScores();  
+  }
+}
+
+void ClockChanged()
+{
+  int clkValue = digitalRead(CLK);//Read the CLK pin level
+  int dtValue = digitalRead(DT);//Read the DT pin level
+  if (lastCLK != clkValue)
+  {
+    lastCLK = clkValue;
+    count += (clkValue != dtValue ? 1 : -1);//CLK and inconsistent DT + 1, otherwise - 1
+    if (count &lt; 0) {
+      count = 40 + count;
+    }
+    if (count &gt; 39) {
+      count = 0;
+    }
+    if (count % 4 == 0) {
+      teamIndex = count / 4;
+      getTeamScore(teams[teamIndex]);
+    }
+    clicked = false;
+  }
+}              
+            </code></pre>
+            <p>Occassionally the score parser gets confused and adds a regional team but I learnt not to try to do any heavy string processing on the NodeMCU is that is not really its forte. Ideally you should use it to drive the screen by being sent simple pre-formatted messages.</p>
             <img src="images/node_cricket.jpg">
             <img src="images/node_jenkins.jpg">
             <img src="images/node_news.jpg">
