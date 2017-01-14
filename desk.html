@@ -128,7 +128,8 @@ var server = http.createServer(function (request, response) {
             <img src="images/icanhaz_lcds.jpg">
             <p>I use the screens to show the sender and subject of my latest emails. Work on the left and personal on the right. The software runs on the Pi, using the <a href="https://www.npmjs.com/package/mail-notifier">mail-notifier</a> node.js module to poll 2 email accounts and a <a href="https://github.com/adafruit/Adafruit_Nokia_LCD">python script</a> to update the screens. When a new email arrives, the Pi switches on the screen backlight and lights up an LED for 30 seconds, then blinks it for another 30 in a usually vain attempt to get me to pay attention.</p>
             <pre><code>
-//node.js script to poll email and send updates to a local python server to update the Nokia screens
+//node.js script to poll email and send updates to 
+//a local python server to update the Nokia screens
 var sh = require("child_process").execSync;
 var wpi = require("wiring-pi");
 wpi.wiringPiSetupGpio();
@@ -191,7 +192,9 @@ var ny = notifier(yahoo)
   console.log(mail.from);
   console.log(mail.subject);
   mailLight(yahooPin, yahooBkl);
-  sh("wget -q -O- 'http://localhost:7777/?screen=" + yahooScr + "&msg=" + cleanstring(mail.from[0].name.slice(0,15)) + " " + cleanstring(mail.subject) + "'");})
+  sh("wget -q -O- 'http://localhost:7777/?screen=" + yahooScr 
+    + "&msg=" + cleanstring(mail.from[0].name.slice(0,15)) + " " 
+    + cleanstring(mail.subject) + "'");})
 .on("connected", function () {
   console.log(new Date() + " CONNECTED TO YAHOO");
 })
@@ -228,7 +231,9 @@ var no = notifier(outlook)
   console.log(mail.from);
   console.log(mail.subject);
   mailLight(workPin, workBkl);
-  sh("wget -q -O- 'http://localhost:7777/?screen=" + workScr + "&msg=" + cleanstring(mail.from[0].name.slice(0,15)) + " " + cleanstring(mail.subject) + "'");
+  sh("wget -q -O- 'http://localhost:7777/?screen=" + workScr 
+    + "&msg=" + cleanstring(mail.from[0].name.slice(0,15)) + " " 
+    + cleanstring(mail.subject) + "'");
 })
 .on("connected", function () {
   console.log(new Date() + " CONNECTED TO OUTLOOK");
@@ -240,7 +245,9 @@ no.on('end', function () { // session closed
 });              
             </code></pre>            
             <pre><code>
-# respond to GET requests on port 7777 passing the msg parameter to the specified numbered screen
+# respond to GET requests on port 7777 passing the msg parameter 
+# to the specified numbered screen
+
 #!/usr/bin/env python
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 import urlparse
@@ -249,12 +256,12 @@ import SocketServer
 class S(BaseHTTPRequestHandler):
     def _set_headers(self):
         self.send_response(200)
-        self.send_header('Content-type', 'text/html')
+        self.send_header('Content-type', 'text/plain')
         self.end_headers()
 
     def do_GET(self):
         self._set_headers()
-        self.wfile.write("<html><body><h1>hi!</h1></body></html>")
+        self.wfile.write("hi!")
         if (self.path != '/favicon.ico'):
           o = urlparse.urlparse(self.path)
           print urlparse.parse_qs(o.query)
@@ -269,7 +276,7 @@ class S(BaseHTTPRequestHandler):
     def do_POST(self):
         # Doesn't do anything with posted data
         self._set_headers()
-        self.wfile.write("<html><body><h1>POST!</h1></body></html>")
+        self.wfile.write("POST!")
         
 def run(server_class=HTTPServer, handler_class=S, port=80):
     server_address = ('', port)
@@ -349,7 +356,31 @@ if __name__ == "__main__":
         run()
               
             </code></pre>
+            <p>Inevitably, this wasn't enough screen real estate, so I turned my attention to other useable equipment I had lying around. I dug up a Nook HD and a Nook HD+, both with cracked screens and 2 pre-flammable Samsung Galaxy Notes. The Nooks were attached to the frame of the Tardis overhead using gooseneck clamps and I used screws to attach the Notes to the 2 large gauges I wasn't using on the panel.</p>
             <img src="images/screens_dark.jpg">
+            <p>Rather then having them exist as independent screens, I create 3 VNC sessions on my desktop and point the Nook HD and the 2 Notes to those sessions. I use x2x to allow my keyboard and mouse to control those sessions when I hit the screen edges of my main desktop. When I log into my desktop, I run this bash script to enable VNC/x2x control:</p>
+            <pre><code>
+#!/bin/bash
+sudo killall Xvnc4
+sudo killall x2x
+sleep 5
+
+#nook HD
+vncserver -geometry 1420x768 
+sleep 5
+x2x -west -to :1 &
+
+#note 4
+vncserver -geometry  1280x720
+sleep 5
+x2x -east -to :2 &
+
+#note 2
+vncserver -geometry  1280x720
+sleep 5
+x2x -south -to :3 &
+            </code></pre>
+            <p>Occasionally I run a synergy client on the (rooted) Nook HD+ to gain keyboard and mouse control but more often than not, it's simply used natively as an Android Slack client. These extra small screens allow me to display things I need to keep an eye on, such as server logs when testing or the Pi camera in the lounge to make sure the cat an the dog are not tearing the place up while I'm working.</p>
             <img src="images/node_cricket.jpg">
             <img src="images/node_jenkins.jpg">
             <img src="images/node_news.jpg">
