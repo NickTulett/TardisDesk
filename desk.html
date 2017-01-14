@@ -123,7 +123,232 @@ var server = http.createServer(function (request, response) {
             </code></pre>
             <h3>Adding screens</h3>
             <p>By day I am a software tester and tend to use a lot of monitors. On my desk in the office, I have 4 monitors, plus 2 laptops and an iPad in constant use. I cannot replicate this at the same scale in the Tardis desk as it is not really even wide enough for 2 monitors.</p>
+            <p>I started to think what I could do about this, toying with the idea of using another Pi behind the instrument panel to drive some cheap Chinese LCD panel. I didn't want to break the symmetry of the panel and was loathe to chance my luck with the expense and power demands of 2 panels but then I saw that the old <a href="https://shop.pimoroni.com/products/graphic-lcd-84x48-nokia-5110">Nokia 5110</a> screens could be re-purposed as Pi screens. This seemed like a suitably retro-modern addition to the desk, so I ordered 2. Wiring them up involved only my sewcond bout of soldering in 30 years and the smell of melting lead and flesh brought back the memories of my work experience week at Marconi.</p>
+            <p>They are not difficult to solder, my only advice would be to decide whether the wires should approach from the front or the back of the screen panel BEFORE you start. Thankfully there are 2 SPI panels available on a Pi, so I could run both screens from one Pi.</p>
             <img src="images/icanhaz_lcds.jpg">
+            <p>I use the screens to show the sender and subject of my latest emails. Work on the left and personal on the right. The software runs on the Pi, using the <a href="https://www.npmjs.com/package/mail-notifier">mail-notifier</a> node.js module to poll 2 email accounts and a <a href="https://github.com/adafruit/Adafruit_Nokia_LCD">python script</a> to update the screens. When a new email arrives, the Pi switches on the screen backlight and lights up an LED for 30 seconds, then blinks it for another 30 in a usually vain attempt to get me to pay attention.</p>
+            <pre><code>
+//node.js script to poll email and send updates to a local python server to update the Nokia screens
+var sh = require("child_process").execSync;
+var wpi = require("wiring-pi");
+wpi.wiringPiSetupGpio();
+
+var notifier = require('mail-notifier');
+var now = new Date();
+var yahooPin = 5;
+var yahooBkl = 17;
+var yahooScr = 1;
+var workPin = 6;
+var workBkl = 18;
+var workScr = 0;
+
+wpi.pinMode(yahooPin, wpi.OUTPUT);
+wpi.digitalWrite(yahooPin, 0);
+wpi.pinMode(workPin, wpi.OUTPUT);
+wpi.digitalWrite(workPin, 0);
+
+function lighton(pin) {
+  wpi.digitalWrite(pin, 1);
+}
+function blink(pin) {
+  wpi.digitalWrite(pin, 1 - wpi.digitalRead(pin));
+}
+var blinkers = {};
+function blinker(pin) {
+  if (blinkers[pin]) {
+    clearInterval(blinkers[pin]);
+  }
+  blinkers[pin] = setInterval(blink, 1e3, pin);
+}
+function lightoff(pin) {
+  clearInterval(blinkers[pin]);
+  blinkers[pin] = null;
+  wpi.digitalWrite(pin, 0);//off
+}
+function mailLight(pin, bkl) {
+  lighton(pin);
+  setTimeout(blinker, 30e3, pin);
+  setTimeout(lightoff, 60e3, pin);
+}
+function cleanstring(str) {
+  return str.replace(/\W+/g, " ").replace(/("|')/g, "");
+}
+
+console.log(new Date() + " CONNECTING TO YAHOO");
+var yahoo = {
+  user: "user@yahoo.com",
+  password: "password",
+  host: "imap.mail.yahoo.com",
+  port: 993, // imap port
+  tls: true,// use secure connection
+  tlsOptions: { rejectUnauthorized: false },
+  markSeen: false,
+  search: [ 'UNSEEN', ['SINCE', now] ]
+};
+var ny = notifier(yahoo)
+.on('mail',function(mail){
+  console.log(mail.date); 
+  console.log(mail.from);
+  console.log(mail.subject);
+  mailLight(yahooPin, yahooBkl);
+  sh("wget -q -O- 'http://localhost:7777/?screen=" + yahooScr + "&msg=" + cleanstring(mail.from[0].name.slice(0,15)) + " " + cleanstring(mail.subject) + "'");})
+.on("connected", function () {
+  console.log(new Date() + " CONNECTED TO YAHOO");
+})
+.on("error", function (err) {
+  console.dir(err);
+})
+.start();
+ny.on('end', function () { // session closed
+  console.log(new Date() + " RESTARTING CONNECTION TO YAHOO");
+  ny.start();
+});
+
+console.log(new Date() + " CONNECTING TO OUTLOOK");
+var outlook = {
+  user: "user@outlook.com",
+  password: "password",
+  host: "outlook.office365.com",
+  port: 993, // imap port
+  tls: true,// use secure connection
+  tlsOptions: { rejectUnauthorized: false },
+  markSeen: false,
+  search: [ 'NEW' ]//[ 'UNSEEN', ['SINCE', now] ]
+};
+var lastWorkEmail = 0;
+var newEmail;
+var no = notifier(outlook)
+.on('mail',function(mail){
+  newEmail = false;
+  console.log(mail.date); 
+  if (new Date(mail.date) > lastWorkEmail) {
+    newEmail = true;
+    lastWorkEmail = new Date(mail.date);
+  }
+  console.log(mail.from);
+  console.log(mail.subject);
+  mailLight(workPin, workBkl);
+  sh("wget -q -O- 'http://localhost:7777/?screen=" + workScr + "&msg=" + cleanstring(mail.from[0].name.slice(0,15)) + " " + cleanstring(mail.subject) + "'");
+})
+.on("connected", function () {
+  console.log(new Date() + " CONNECTED TO OUTLOOK");
+})
+.start();
+no.on('end', function () { // session closed
+  console.log(new Date() + " RESTARTING CONNECTION TO YAHOO");
+  no.start();
+});              
+            </code></pre>            
+            <pre><code>
+# respond to GET requests on port 7777 passing the msg parameter to the specified numbered screen
+#!/usr/bin/env python
+from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+import urlparse
+import SocketServer
+
+class S(BaseHTTPRequestHandler):
+    def _set_headers(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
+    def do_GET(self):
+        self._set_headers()
+        self.wfile.write("<html><body><h1>hi!</h1></body></html>")
+        if (self.path != '/favicon.ico'):
+          o = urlparse.urlparse(self.path)
+          print urlparse.parse_qs(o.query)
+          newtxt = urlparse.parse_qs(o.query)['msg'][0]
+          scr = int(urlparse.parse_qs(o.query)['screen'][0])
+          print scr
+          showText(newtxt, scr);
+
+    def do_HEAD(self):
+        self._set_headers()
+        
+    def do_POST(self):
+        # Doesn't do anything with posted data
+        self._set_headers()
+        self.wfile.write("<html><body><h1>POST!</h1></body></html>")
+        
+def run(server_class=HTTPServer, handler_class=S, port=80):
+    server_address = ('', port)
+    httpd = server_class(server_address, handler_class)
+    print 'Starting httpd...'
+    httpd.serve_forever()
+
+import time
+
+import Adafruit_Nokia_LCD as LCD
+import Adafruit_GPIO.SPI as SPI
+
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageFont
+
+# Raspberry Pi software SPI config:
+SCLK = [11, 21]
+DIN = [10, 20]
+DC = [23, 22]
+RST = [24, 27]
+CS = [8, 7]
+BKL = [19, 17]
+
+def showText(msg, screen):
+# Software SPI usage (defaults to bit-bang SPI interface):
+  disp = LCD.PCD8544(DC[screen], RST[screen], SCLK[screen], DIN[screen], CS[screen])
+
+# Initialize library.
+  disp.begin(contrast=60)
+
+  print msg
+  if (len(msg) < 16):
+    line = 15
+    margin = (15 - len(msg)) * 4
+  else:
+    line = 0
+    margin = 0
+  msgparts = [msg[i:i+16] for i in range(0, len(msg), 16)]
+# Clear display.
+  disp.clear()
+  disp.display()
+
+# Create blank image for drawing.
+# Make sure to create image with mode '1' for 1-bit color.
+  image = Image.new('1', (LCD.LCDWIDTH, LCD.LCDHEIGHT))
+
+# Get drawing object to draw on image.
+  draw = ImageDraw.Draw(image)
+
+# Draw a white filled box to clear the image.
+  draw.rectangle((0,0,LCD.LCDWIDTH,LCD.LCDHEIGHT), outline=255, fill=255)
+
+# Load default font.
+#  font = ImageFont.load_default()
+
+# Alternatively load a TTF font.
+# Some nice fonts to try: http://www.dafont.com/bitmap.php
+#  font = ImageFont.truetype('Minecraftia.ttf', 8)
+  font = ImageFont.truetype('/home/pi/fonts/pf_tempesta_seven.ttf', 8)
+
+# Write some text.
+  for msgpart in msgparts:
+    draw.text((margin, line), msgpart, font=font)
+    line = line + 9
+
+# Display image.
+  disp.image(image)
+  disp.display()
+
+if __name__ == "__main__":
+    from sys import argv
+
+    if len(argv) == 2:
+        run(port=int(argv[1]))
+    else:
+        run()
+              
+            </code></pre>
             <img src="images/screens_dark.jpg">
             <img src="images/node_cricket.jpg">
             <img src="images/node_jenkins.jpg">
