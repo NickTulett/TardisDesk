@@ -70,7 +70,7 @@
             <p>So far, so good. We have lots of outputs updating in near real-time, but how about adding some input controls?</p>
             <p>Something I have to do every time I work from home is connect to the VPN at work, so how about making a switch for this? Obviously it couldn't be any ordinary toggle switch, it had to be a missile switch with a flip cover</p>
             <img src="images/vpn_switch_400.gif">
-            <p>Over to the right I added an illuminated toggle switch to switch off the privoxy server running on another Pi, through which my daughter's devices connect to the web. This enables me to make good on the almost daily threat: <em>"If you don't brush your teeth, I'm turning the internet off"</em>.</p>
+            <p>Elsewhere I've added an illuminated toggle switch to switch off the privoxy server running on another Pi, through which my daughter's devices connect to the web. This enables me to make good on the almost daily threat: <em>"If you don't brush your teeth, I'm turning the internet off"</em>.</p>
             <p>The last input was a good deal more complex. I wanted to use at least on of the rheostats on the Muirhead radio test set to control the volume of my sound card (despite having a dedicated volume control knob on my desk as well as volume buttons on one of my keyboards). I had some vague idea about the knobs varying resistance as measured with a multimeter, but I had run out of pins on my Pi and didn't really know how to approach it, so I put it on the back burner.</p>
             <p>A few months later I was really into cheap Arduino clones, especially the NodeMCU variants, and stumbled upon <a href="https://forum.arduino.cc/index.php?topic=52985.0">this question</a> in the Arduino forums. That gave me the confidence to try hooking up the Muirhead rheostat(s) to the analog pin on a NodeMCU using (what I think is) a voltage divider.</p>
             <img src="images/voltage_divider.jpg">
@@ -385,7 +385,7 @@ x2x -south -to :3 &
             <h3>Enter Arduino</h3>
             <p>More often than not, when investigating Pi hardware projects, there is usually a dismissive comment along the lines of "Pfft, overkill, why not use an Arduino?". My curiosity piqued, I treated myself to a birthday present of an Arduino Uno starter kit plus a box of sensors. Well, that opened a can of worms.</p>
             <p>Included in the kit was a 1602 LCD display and while learning how to wire it up and drive it, I thought it would go nicely on one of the Tardis doors to provide even lower-level alerts, such as room temperatures (there were DHT-11 sensors in the kit) or the status of my Jenkins CI projects at work.</p>
-            <p>Having to keep the Arduino connected via USB was a pain and the wifi shields were inexcusably expensive, so I started to look for options with built-in wifi. I settle on the NodeMCU and the Witty WiFi Cloud (yes, seriously) as they were both Arduino clones, had GPIO pins and wifi and were cheap. Very, very very cheap. So I ordered a few.</p>
+            <p>Having to keep the Arduino connected via USB was a pain and the wifi shields were inexcusably expensive, so I started to look for options with built-in wifi. I settle on the NodeMCU and the WiFi Witty Cloud (yes, seriously) as they were both Arduino IDE programmable, had GPIO pins and ESP8266 wifi and were cheap. Very, very very cheap. So I ordered a few.</p>
             <p>My first wifi-enabled mini-screen project was to be an international cricket score display. I hooked up a NodeMCU to the 1602 screen using a million dupont wires and attached a potentiometer to use to scroll through updates for each Test nation. The NodeMCU polls the cricinfo RSS page for international cricket scores, parses out the name and score for each team and reformats it for the display.</p>
             <pre><code>
 #include &lt;ESP8266WiFi.h&gt;
@@ -558,9 +558,228 @@ void ClockChanged()
 }              
             </code></pre>
             <img src="images/node_cricket.jpg">
-            <p>Occassionally the score parser gets confused and adds a regional team but I learnt not to try to do any heavy string processing on the NodeMCU is that is not really its forte. Ideally you should use it to drive the screen by being sent simple pre-formatted messages.</p>
-            <img src="images/node_jenkins.jpg">
+            <p>Occassionally the score parser gets confused and adds a regional team but I learnt not to try to do any heavy string processing on the NodeMCU as that is not really its forte. Ideally you should use an ESP8266 device to drive some hardware by being sent simple pre-formatted messages over HTTP and avoid any complicated local processing.</p>
+            <p>Next I thought about implementing some sort of menu system using these small LCD screens. I opted for the 2004 variant to provide more space for text. Given the number of pins tied up by the first screen, I also opted for I2C screens as they only require 5V, ground and 2 control pins, leaving more pins free for buttons, lights, etc.</p>
+            <p>So then I built a news ticker with a 2004 I2C screen showing story headlines from selected tech, science and cricket news sites. A couple of buttons were added to quickly scroll through site or stories (and just because).</p>
+            <p>The news itself is aggregated by a Raspberry Pi and the headlines reformatted for display at 20x4. It runs a HTTP server that the NodeMCU can request the headlines from. This meets the principle of using the Pi for the heavy lifting and the NodeMCU for the display and input control.</p>
+            <pre><code>
+var feeds = [ 
+  "http://www.techrepublic.com/rssfeeds/articles/latest/",
+  "http://www.theregister.co.uk/headlines.atom",
+  "http://www.nasa.gov/rss/dyn/breaking_news.rss",
+  "http://www.sciencemag.org/rss/news_current.xml",
+  "http://www.thenakedscientists.com/rss/science_news.xml",
+  "http://makezine.com/feed/",
+  "http://www.espncricinfo.com/rss/content/story/feeds/0.xml",
+  "http://www.espncricinfo.com/rss/content/story/feeds/1.xml"
+]
+var feedindex = -1;
+var storyindex = -1;
+var stories = [];
+var feedread = require("feed-read");
+var http = require("http");
+var char80 = (new Array(80)).join("#");
+
+function storyFormatter(story) {
+//slice the story up so that words are not broken on each row
+  var formattedStory = "";
+  story = story.replace(/[^A-Za-z0-9 ,\.\-]/g, "");
+  story = (story + char80).slice(0,80);
+  function respacer() {
+    storySlice = storySlice.slice(0, 21);
+    if (storySlice.match(/ /)) {
+      while ((storySlice.slice(19, 20) != " ") &amp;&amp; (storySlice.slice(20, 21) != " ")) {
+        storySlice = storySlice.replace(/ ([^ ]+)$/, "  $1");
+      }
+    }
+  }
+  var storySlice = story;
+  respacer();
+  formattedStory += storySlice.slice(0, 20);
+  
+  storySlice = storySlice.slice(20);
+  if (storySlice.slice(0, 1) == " ") {
+    storySlice = storySlice.slice(1);
+  }
+  storySlice += story.slice(21, 41);
+  var slug = storySlice.slice(21);
+  respacer();
+  formattedStory += storySlice.slice(0, 20);
+  
+  storySlice = storySlice.slice(20) + slug;
+  if (storySlice.slice(0, 1) == " ") {
+    storySlice = storySlice.slice(1);
+  }
+  storySlice += story.slice(41, 61);
+  slug = storySlice.slice(21);
+  respacer();
+  formattedStory += storySlice.slice(0, 20);
+
+  storySlice = storySlice.slice(20) + slug;
+  storySlice += story.slice(61, 81);
+  formattedStory += storySlice;
+
+  return formattedStory.replace(/#/g, " ");
+}
+
+var feedserver = http.createServer(function (req, res) {
+  if (req.url.match(/topic/i)) {
+    feedindex++;
+    if (feedindex == feeds.length) {
+      feedindex = 0;
+    }
+    var feed = feeds[feedindex];
+    stories = [];
+    storyindex = -1;
+    feedread(feed, function(err, articles) {
+      articles.forEach(function (article, i) {
+        if (i < 10) {
+          stories.push(storyFormatter(article.title));
+        }
+      });
+      res.writeHead(200, {'Content-Type': 'text/plain'});
+      res.end(articles[0].feed.name.replace(/ | /, ""));
+    });
+  }
+  if (req.url.match(/story/i)) {
+    storyindex++;
+    res.writeHead(200, {'Content-Type': 'text/plain'});
+    if (storyindex >= stories.length) {
+      res.end("END");
+    }
+    res.end(stories[storyindex]);
+  }   
+});
+
+feedserver.listen(8989);
+            </code></pre>
+            <pre><code>
+#include &lt;ESP8266WiFi.h&gt;
+#include &lt;ESP8266HTTPClient.h&gt;
+#include &lt;LiquidCrystal_I2C.h&gt;
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+#define HOSTNAME "NODE2004NEWSTICKER" 
+const char* ssid = "SSID";
+const char* password = "password";
+
+const int TOPIC = D3;
+const int STORY = D4;
+
+const String topicURL = "http://192.168.1.82:8989/topic";
+const String storyURL = "http://192.168.1.82:8989/story";
+
+String char10 = "          ";
+String char20 = char10 + char10;
+String char40 = char20 + char20;
+String char80 = char40 + char40;
+
+void getTopic() {
+  Serial.print("TOPIC ");
+  HTTPClient http;
+  http.begin(topicURL);
+  int httpCode = http.GET();
+  Serial.println(httpCode);
+  if(httpCode &gt; 0) {
+      if(httpCode == HTTP_CODE_OK) {
+        Serial.println("FETCHED");
+        lcdprint(char20 + http.getString());
+      } else {
+        lcdprint("PROBLEM WITH FEED");      
+      }
+  }
+}
+
+void getStory() {
+  Serial.print("STORY ");
+  HTTPClient http;
+  http.begin(storyURL);
+  int httpCode = http.GET();
+  Serial.println(httpCode);
+  if(httpCode &gt; 0) {
+      if(httpCode == HTTP_CODE_OK) {
+        Serial.println("FETCHED");
+        lcdprint(http.getString());
+      } else {
+        lcdprint("PROBLEM WITH STORY");      
+      }
+  }
+}
+
+void lcdprint(String story) {
+  if (story == "END") {
+    getTopic();
+    return;
+  }
+  lcd.clear();
+  story = (story + char80).substring(0,80);
+  lcd.setCursor(0,0);
+  lcd.print(story.substring(0,20));
+  lcd.setCursor(0,1);
+  lcd.print(story.substring(20,40));
+  lcd.setCursor(0,2);
+  lcd.print(story.substring(40,60));
+  lcd.setCursor(0,3);
+  lcd.print(story.substring(60));
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(10);
+  pinMode(TOPIC, INPUT);
+  pinMode(STORY, INPUT);
+  // Connect to WiFi network
+  Serial.println("Connecting to ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+  Serial.println("WiFi connected");
+  // Print the IP address
+  Serial.println(WiFi.localIP());
+  lcd.begin(20,4);
+  lcd.init();
+  lcd.backlight();
+  // Move the cursor characters to the right and
+  // zero characters down (line 1).
+  lcd.setCursor(3, 0);
+  lcd.print(WiFi.localIP());
+  lcd.setCursor(4, 2);
+  lcd.print("NEWS TICKER");
+  getTopic();
+}
+
+int clickTime;
+
+void loop() {
+  if (digitalRead(TOPIC) == LOW) {
+    Serial.println("CLICKED TOPIC");
+    getTopic();
+    while(digitalRead(TOPIC) == LOW) {
+      delay(100);
+    }
+    clickTime = millis();
+  }
+  if (digitalRead(STORY) == LOW) {
+    Serial.println("CLICKED STORY");
+    getStory();
+    while(digitalRead(STORY) == LOW) {
+      delay(100);
+    }
+    clickTime = millis();
+  }
+  if (millis() - clickTime &gt; 7000) {
+    Serial.println("TIMER FIRED");
+    getStory();
+    clickTime = millis();
+  }
+}              
+            </code></pre>
             <img src="images/node_news.jpg">
+            <p>The 3rd NodeMCU display uses a 2004 I2C again but adds an analog joystick (the analog aspect is irrelevant but, again, learning) to control a rudimentary menu system. I use the stick's horizontal axis to control menu selection and vertical axis and click to select menu items. At the moment I can choose to see temperature, RH and light level in 3 rooms where I have sensors or status reports from the Jenkins CI system at work.</p>
+            <p>Using an analog joystick (because that was what came in the sensor kit) complicated matters because the NodeMCU only has one analog port. I decided to over-engineer a solution by incorporating an MCP3008 ADC, which can translate up to 8 analog inputs to digital signals. I only needed 2 analog channels (one for each joystick axis) but I decided to use another channel for my Muirhead volume control mentioned above, freeing up the NodeMCU previously dedicated to that task.</p>
+            <img src="images/node_jenkins.jpg">
             <h3>Enhancing a keyboard</h3>
             <p>My Corsair K-65 is a perfectly fine mechanical keyboard but I did shoot myself in the foot somewhat be replacing all the letter keys with blank keycaps. Although I have been using keyboards regularly for more than 3 decades, I am by no means a touch typist. I can cope quite well with general typing but I need to use a lot of passwords for work and with blank keycaps and no visual feedback when typing, it can become quite annoying.</p>
             <img src="images/corsair_blanks.jpg">
