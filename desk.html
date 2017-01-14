@@ -588,7 +588,9 @@ function storyFormatter(story) {
   function respacer() {
     storySlice = storySlice.slice(0, 21);
     if (storySlice.match(/ /)) {
-      while ((storySlice.slice(19, 20) != " ") &amp;&amp; (storySlice.slice(20, 21) != " ")) {
+      while ((storySlice.slice(19, 20) != " ") 
+        &amp;&amp; 
+        (storySlice.slice(20, 21) != " ")) {
         storySlice = storySlice.replace(/ ([^ ]+)$/, "  $1");
       }
     }
@@ -779,17 +781,422 @@ void loop() {
             <img src="images/node_news.jpg">
             <p>The 3rd NodeMCU display uses a 2004 I2C again but adds an analog joystick (the analog aspect is irrelevant but, again, learning) to control a rudimentary menu system. I use the stick's horizontal axis to control menu selection and vertical axis and click to select menu items. At the moment I can choose to see temperature, RH and light level in 3 rooms where I have sensors or status reports from the Jenkins CI system at work.</p>
             <p>Using an analog joystick (because that was what came in the sensor kit) complicated matters because the NodeMCU only has one analog port. I decided to over-engineer a solution by incorporating an MCP3008 ADC, which can translate up to 8 analog inputs to digital signals. I only needed 2 analog channels (one for each joystick axis) but I decided to use another channel for my Muirhead volume control mentioned above, freeing up the NodeMCU previously dedicated to that task.</p>
+            <p>You can define custom characters for the 1602 and 2004 displays, so I created a half block so temperatures could be displayed as bar charts. One complete block is 2 degrees C. "O" characters appear at 10 and 20C</p>
+            <img src="images/temperatures.jpg">
+            <p>I have DHT-11 and light sensors attached to NodeMCUs and WiFi Witty Cloud boards in 3 rooms in the house. They all run the same http server code, responding to GET requests with the latest readings.</p>
+            <p>The Jenkins page in the menu uses the separation of responsibilities idea again. The code to poll Jenkins for the latest job status actually runs on my desktop and the NodeMCU just pings it for data and displays it on the screen.</p>
             <img src="images/node_jenkins.jpg">
             <h3>Enhancing a keyboard</h3>
             <p>My Corsair K-65 is a perfectly fine mechanical keyboard but I did shoot myself in the foot somewhat be replacing all the letter keys with blank keycaps. Although I have been using keyboards regularly for more than 3 decades, I am by no means a touch typist. I can cope quite well with general typing but I need to use a lot of passwords for work and with blank keycaps and no visual feedback when typing, it can become quite annoying.</p>
             <img src="images/corsair_blanks.jpg">
-            <p>Just before Xmas I spotted some Cherry G81-7000 retail keyboards on eBay. They had built in card-readers and programmable keys. I thought "they are mechanical keyboards, how bad can they be to type on?" Actually pretty terrible. They don't feel mechanical at all but for £5 it will do. I stripped out the card-reader and added a NodeMCU wired to 2 small displays - one LED and one LCD - and added 3 leds for visual flair. I also replaced some keys with spare blank black keycaps for extra edginess. The whole thing needed a good clean as every keycap had years of grime caked on. I removed this with the harshest cleaning product known to man - baby wipes. Pulling all the keycaps also revealed a number of clothes tags and paper-clips stuck under several keys. After that the typing experience improved but still not great.</p>
+            <p>Just before Xmas I spotted some <a href="http://cherryamericas.com/product/7000-series-compact-msr-keyboard/">Cherry G81-7000</a> retail keyboards on eBay. They had built in card-readers and programmable keys. I thought "they are mechanical keyboards, how bad can they be to type on?" Actually <a href="https://deskthority.net/wiki/Cherry_MY">pretty terrible</a>. They don't feel mechanical at all but for £5 it will do. I stripped out the card-reader and added a NodeMCU wired to 2 small displays - one LED and one LCD - and added 3 leds for visual flair. I also replaced some keys with spare blank black keycaps for extra edginess. The whole thing needed a good clean as every keycap had years of grime caked on. I removed this with the harshest cleaning product known to man - baby wipes. Pulling all the keycaps also revealed a number of clothes tags and paper-clips stuck under several keys. After that the typing experience improved but still not great.</p>
             <img src="images/kbord.jpg">
-            <p>I programmed the NodeMCU in the keyboard to display todays date on the LED and weather updates on the LCD.</p>
+            <p>The NodeMCU in the keyboard accepts HTTP GET requests with parameters for display and message.</p>
+            <pre><code>
+#include &lt;ESP8266WiFi.h&gt;
+#include &lt;ESP8266WebServer.h&gt;
+
+ESP8266WebServer server(80);
+
+#define HOSTNAME "KBORD" 
+const char* ssid = "SSID";
+const char* password = "password";
+
+#include "LedControl.h"
+LedControl lc=LedControl(D8,D7,D6,1);
+
+#include &lt;Wire.h&gt; 
+#include &lt;LiquidCrystal_I2C.h&gt;
+LiquidCrystal_I2C lcd(0x3F,16,2); 
+
+const String char16 = "                ";
+
+//led character definitions
+const byte SevenSegChar[101] = {0x00, // SPACE
+                               0xA0, // !
+                               0x22, // "
+                               0x36, // #
+                               0x4B, // $
+                               0x5A, // %
+                               0x6F, // &
+                               0x02, // '
+                               0x4E, // (
+                               0x78, // )
+                               0x63, // *
+                               0x07, // +
+                               0x18, // ,
+                               0x01, // -
+                               0x80, // .
+                               0x25, // / 
+                               0x7E, // 0
+                               0x30, // 1
+                               0x6D, // 2
+                               0x79, // 3
+                               0x33, // 4
+                               0x5B, // 5
+                               0x5F, // 6
+                               0x70, // 7
+                               0x7F, // 8        
+                               0x7B, // 9
+                               0x09, // :
+                               0x19, // ;
+                               0x43, // &lt;
+                               0x41, // =
+                               0x61, // &gt;
+                               0x65, // ?
+                               0x7D, // @
+                               0x77, // A
+                               0x1F, // B
+                               0x4E, // C
+                               0x3D, // D
+                               0x4F, // E
+                               0x47, // F
+                               0x5E, // G
+                               0x37, // H
+                               0x30, // I
+                               0x38, // J
+                               0x57, // K
+                               0x0E, // L
+                               0x54, // M
+                               0x76, // N
+                               0x7E, // O
+                               0x67, // P
+                               0x73, // Q
+                               0x66, // R
+                               0x5B, // S
+                               0x0F, // T
+                               0x3E, // U
+                               0x3A, // V
+                               0x2A, // W
+                               0x37, // X
+                               0x3B, // Y
+                               0x69, // Z
+                               0x4E, // [
+                               0x13, // |
+                               0x78, // ]
+                               0x62, // ^
+                               0x08, // _ 
+                               0x02, // '      
+                               0x77, // a
+                               0x1F, // b
+                               0x4E, // c
+                               0x3D, // d
+                               0x4F, // e
+                               0x47, // f
+                               0x5E, // g
+                               0x37, // h
+                               0x30, // i
+                               0x38, // j
+                               0x57, // k
+                               0x0E, // l
+                               0x54, // m
+                               0x76, // n
+                               0x7E, // o
+                               0x67, // p
+                               0x73, // q
+                               0x66, // r
+                               0x5B, // s
+                               0x0F, // t
+                               0x3E, // u
+                               0x3A, // v
+                               0x2A, // w
+                               0x37, // x
+                               0x3B, // y
+                               0x69}; // z
+
+void setup() {
+  Serial.begin (9600);
+// Initialize the MAX7219 device
+  lc.shutdown(0,false);   // Enable display
+  lc.setIntensity(0,8);  // Set brightness level (0 is min, 15 is max)
+  lc.clearDisplay(0);     // Clear display register
+ 
+  lcd.begin(16,2);
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(2,0);
+  lcd.print("kBord Active");
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  while (WiFi.waitForConnectResult() != WL_CONNECTED){
+    WiFi.begin(ssid, password);
+    Serial.println("Retrying connection...");
+  }
+  server.begin();
+  Serial.println("Server started");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  lcd.setCursor(2,1);
+  lcd.print(WiFi.localIP());
+  Serial.println("Ready");
+
+  server.on("/LCD", writeLCD);
+  server.on("/LED", writeLED);
+  server.on("/counter", enableCounter);
+  server.on("/stopCounter", disableCounter);
+  server.on("/startCounter", startCounter);
+}
+
+void writeLCD() {
+  String message = server.arg("msg") + char16 + char16;
+  lcd.setCursor(0,0);
+  lcd.print(message.substring(0, 16));  
+  lcd.setCursor(0,1);
+  lcd.print(message.substring(16, 32));  
+  server.send(200, "");
+}
+bool counteron = false;
+void enableCounter() {
+  counteron = true;
+  server.send(200, "");
+}
+void disableCounter() {
+  counteron = false;
+  server.send(200, "");
+}
+long counterStart = 0;
+void startCounter() {
+  counteron = false;
+  counterStart = millis();
+  enableCounter();
+}
+void writeCounter() {
+  String message = (String)((millis() - counterStart) / 100);
+  while(message.length() &lt; 8) {
+    message = " " + message;
+  }
+  char ledBuffer[9];
+  String response = "";
+  message.toCharArray(ledBuffer, 9);
+  lc.clearDisplay(0);
+  for (int i = 0; i &lt; 8; i++) {
+    lc.setChar(0, 7-i, ledBuffer[i], (bool)(i == 6));
+  }
+}
+void writeLED() {
+  disableCounter();
+  String message = server.arg("msg");
+  char ledBuffer[9];
+  String response = "";
+  message.toCharArray(ledBuffer, 9);
+  lc.clearDisplay(0);
+  for (int i = 0; i &lt; 8; i++) {
+    lc.spiTransfer(0, 8-i, SevenSegChar[ledBuffer[i] - 32]);
+  }
+  server.send(200, "");
+}
+
+void loop() {
+  ArduinoOTA.handle();
+  server.handleClient();
+  if (counteron) {
+    writeCounter();
+    delay(100);
+  }
+}  
+            </code></pre>
+            <p>The Pi running the instrument panel sends the keyboard LCD periodic weather updates and displays today's date every hour on the LED. The LED can also show a minute and second counter which can be started and stopped via HTTP.</p>
             <img src="images/ice_pellets.jpg">
             <h3>Getting Exercised</h3>
+            <p>Over the last few months I have developed a form of vertigo that leaves me almost completely intolerant of any kind of transport. While I waiting what seems like forever for a proper diagnosis and treatment, my employers have been kind enough to allow me to work from home. My desk help me to work efficiently and stay in contact with the team, but even though I avoid sitting all day, being virtually housebound is causing health problems. During the course of 2016 I managed to lose 10 kilos in weight over 6 months through careful eating and regular low impact exercise. Having lost most of my access to exercise, I have regained 5 kilos, so I needed to find a way around this.</p>
+            <p>My condition is completely unpredictable and some days I can walk round the block without any problems, other days I cannot make it to the end of the road. I decided to get an exercise bike, nothing fancy, just one that could sit in front of my desk that I could use sitting on a stool. I ordered one for £30 to see how I got on with it. It came with a small computer showing me RPM, elapsed time, equivalent road speed and calories burnt. It was laughably inaccurate, so I decided to replace it. It is designed to be detached easily (no idea why) and on closer inspection, it is just a hall effect sensor used to time the revolutions of a magnet embedded in the wheel. As luck would have it, the Arduino sensor kit included a couple of hall sensors, so it was an easy swap out to replace the original computer with a NodeMCU.</p>
             <img src="images/node_bike.jpg">
+            <p>I run a routine on it to time the usage and rpm speed of the bike and transmit the details to the small screens on the keyboard. The elapsed time in minutes and seconds shows on the LED and spin count and speed on the LCD. All stats are transmitted to my desktop for storage and reset after the bike is unused for 5 seconds.</p>
             <img src="images/bike_displays.jpg">
+            <pre><code>
+#include &lt;ESP8266WiFi.h&gt;
+#include &lt;ESP8266HTTPClient.h&gt;
+#include &lt;ArduinoOTA.h&gt;
+
+
+int wheelPin = D6;
+int  val;
+long lastTime;
+long diffms;
+int rpm;
+int avg;
+bool quit;
+long session;
+long spinCount;
+const String char8 = "        ";
+
+#define HOSTNAME "NODEBIKE" 
+const char* ssid = "SSID";
+const char* password = "password";
+
+void  setup()
+{
+  Serial.begin(9600);
+  pinMode(wheelPin, INPUT); 
+  lastTime = millis();
+  quit = false;
+  spinCount = 0;
+  session = 0;
+  // Connect to WiFi network
+  Serial.print("Connecting to ");
+  Serial.print(ssid);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.print("");
+  Serial.print("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void startCounter() {
+  HTTPClient http;//start keyboard LED timer
+  http.begin("http://192.168.1.22/startCounter");
+  int httpCode = http.GET();
+  http.end();
+}
+void startVideo() {
+  HTTPClient http;
+  http.begin("http://192.168.1.73:8888/play");
+  int httpCode = http.GET();
+  Serial.println("VIDEO");
+  http.end();
+}
+void startSession() {
+  session = millis();
+  startCounter();
+  startVideo();
+}
+
+void updateKbord() {
+  HTTPClient http;
+  String spinMsg = "SPINS:%20" + (String)spinCount;
+  int spinLen = spinMsg.length() -2;
+  while (spinLen &lt; 16) {
+    spinMsg += "%20";
+    spinLen++;
+  }
+  String rpmMsg = "RPM:" + (String)rpm;
+  if (rpm &lt; 100) {
+    rpmMsg += "%20";
+  }
+  
+  avg = 60000 * spinCount / (lastTime - session);
+  String avgMsg = "%20%20AVG:" + (String)avg;
+  String bikeMsg = spinMsg + rpmMsg + avgMsg;
+  http.begin("http://192.168.1.22/LCD?msg=" + bikeMsg);
+  int httpCode = http.GET();
+  http.end();
+}
+void updateSession() {
+  rpm = 60000 / diffms;
+  spinCount++;
+  updateKbord();
+}
+void stopVideo() {
+  HTTPClient http;
+  http.begin("http://192.168.1.73:8888/kill");
+  int httpCode = http.GET();
+  http.end();
+}
+void writeLog() {
+  HTTPClient http;
+  http.begin("http://192.168.1.73:8888/log?time=" 
+    + (String)session + "&spinCount=" + (String)spinCount);
+  int httpCode = http.GET();
+  http.end();
+}
+void endSession() {
+  HTTPClient http;
+  http.begin("http://192.168.1.22/stopCounter");
+  int httpCode = http.GET();
+  http.end();
+  session = (lastTime - session) / 1000;
+  stopVideo();
+  writeLog();
+  spinCount = 0;
+  session = 0;
+  quit = true;
+}
+
+void  loop() {
+  val = digitalRead(wheelPin);
+  if (val == HIGH) {
+    quit = false;
+    if (session == 0) {
+      startSession();
+    }
+    diffms = millis() - lastTime;
+    if (diffms &gt; 100) {
+      updateSession();
+    }
+    lastTime = millis();
+  }
+  if (!quit) {
+    if (millis() - lastTime &gt; 5000) {
+      endSession();
+    }
+  }
+}
+            </code></pre>
+            <p>The timings are started as soon as the pedals are turned once. The bike also sends a request to my desktop to start playing a POV bike video on YouTube to stop me from getting bored. I use the tv# interface to YouTube so it starts full-screen and can be controlled easily with the cursor keys. I did a bit of initial searching to find dozens of videos to choose from (at random) but related videos can be selected while the bike is running. If a session lasts longer than 100 spins, it is logged so that I can partake in the current trend of obssessively gathering ultimately meaningless stats abut my exercise regime.</p>
+            <pre><code>
+const http = require("http");
+const url = require("url");
+const fs = require("fs");
+const exec = require('child_process').exec;
+const execSync = require('child_process').execSync;
+var vlc = null;
+var rides = [
+  "DGlmmndVkVg", "vllgc9oKjqA", "tEgosOCTiZU", "HAzWivQ6v7I",
+  "_HqhC5OxVko", "uVq9UvLWfog", "fIRMNAP1WOU", "qoYTDv85fDA", 
+  "a5vTA4L_PB4", "XDzt7FN3gJo", "32bsOn4H2QY", "BaLbA6ZFVLI",
+  "IWqpooKNZaI", "7o2YxaYC9jo", "nWAcONyRTkg", "6KrJW2KJM1Y", 
+  "5mD3yJ60mrk", "J_GEBm78JvY", "04lFS_5YVpQ", "iknNz7uTwf8", 
+  "vX4Ktnec3C8", "v03XIh5UcD8", "bTwpV_Ad2HQ", "37TJ6Nv4Dcs",
+  "2zub_Wamfi0", "Swvfr-AMjLU", "HseQVMsDWKc",
+  ];
+
+
+http.createServer(function (request, response) {
+  var action = "KILLING";
+  var params = url.parse(request.url, true);
+  if (vlc &amp;&amp; request.url.match(/kill/)) {
+    try {
+      execSync("killall chrome");
+    } catch (e) {
+      console.log("NO CHROME TO KILL");
+    }
+    vlc.kill("SIGHUP");
+  }
+  if (request.url.match(/play/)) {
+    var ride = Math.floor(Math.random() * rides.length);
+    if (vlc &amp;&amp; vlc.pid) {
+      try {
+        execSync("killall chrome");
+      } catch (e) {
+        console.log("NO CHROME TO KILL");
+      }
+    }
+    vlc &amp;&amp; vlc.kill("SIGHUP");
+    vlc = exec("google-chrome --start-fullscreen 'https://www.youtube.com/tv#/watch?v=" + rides[ride] + "'");
+    action = "PLAYING";
+  }
+  if (request.url.match(/log/)) {
+    action = "LOGGING";
+    if (+params.query["spinCount"] &gt; 100) {
+      fs.appendFileSync("/home/nick/Arduino/nodes/bikeLog.txt", 
+        Date.now() + "," 
+        + params.query["time"] 
+        + "," + params.query["spinCount"] + "\n");
+    }
+  }
+  console.log(action);
+  response.writeHead(200, {"Content-Type": "text/plain"});
+  response.end(action);
+}).listen(8888);              
+            </code></pre>
+            <p>The complete desk:</p>
             <img src="images/node_bike_video.jpg">
         </section>
     </div>
