@@ -10,6 +10,10 @@
     .inner {
         max-width: 800px;
     }
+    .gif {
+      width: 800px;
+      height: 450px;
+    }
     </style>
 </head>
 
@@ -33,17 +37,17 @@
             <p>Never being one to waste money or wood, I fitted some extra shelving inside the wardrobe, installed my PC and a couple of monitors and hey presto, a functional standing desk practically for free.</p>
             <img src="images/tardis_in.jpg">
             <h3>Becoming a Tardis</h3>
-            <p>Functional but boring, so I began to think about giving it a lick of paint. I decided to pick a theme based on a possibly the most famous standing desk of all time - the Tardis</p>
+            <p>Functional but boring, so I began to think about giving it a lick of paint. I decided to pick a theme based on a possibly the most famous standing desk of all time - the <a href="https://en.wikipedia.org/wiki/TARDIS">Tardis</a></p>
             <p>I had to chisel off the faux-deco panels to get 2 flat doors, then made some framing panels from MDF, pinned and glued them into place and gave the whole thing a couple of coats of dark blue paint. I wasn't too fussed about the quality of the finish as I wanted it to look a bit weather-beaten.</p>
             <p>I masked off the top panel in each door to let the white undercoat show through for the top windows(?). A black POLICE BOX roof sign and the white FOR USE OF PUBLIC door signs were printed off and the Tardis was complete. Even more complete that Xmas when I was gifted a revolving police light.</p>
             <img src="images/tardis_out.jpg">
-            <p> I decorated the insides of the doors with some spacey vinyl from a old conference display that was being thrown out at work and the guts of some dead hard drives and scrap 80s computers from eBay.</p>
+            <p>I decorated the insides of the doors with some spacey vinyl from a old conference display that was being thrown out at work and the guts of some dead hard drives and scrap 80s computers from eBay.</p>
             <h3>Becoming Interactive</h3>
             <p>So the decoration was done and gave me a little lift every time I walked past the spare room and saw my own Tardis brooding in the corner - believe me you do need something to make you smile every now and then if you work from home for any length of time.</p>
-            <p>When I thought about my memories of the Tardis in the 70s and 80s, it was all dials, knobs, gauges and screens. I started to browse eBay looking for old equipment panels to decorate the blank spaces in the desks. I managed to get a job-lot of old moving coil gauges and aircraft equipment and laid them out on some plywood cut to fit the gap in the desk. I also added a Muirhead radio test set which had some nicely tactile rheostats.</p>
-            <p>Now I'm not sure what sparked the original idea but I have been acquiring Raspberry Pis since the first models came out but had never done anything with the GPIO pins - due to a lack of knowledge and a suitable project. I saw that some people had used Pis to drive old gauges for clocks and bandwidth monitors and wondered if I could do something similar.</p>
+            <p>When I thought about my memories of the Tardis in the 70s and 80s, it was all dials, knobs, gauges and screens. I started to browse eBay looking for old equipment panels to decorate the blank spaces in the desks. I managed to get a job-lot of old moving coil gauges and aircraft instruments and laid them out on some plywood cut to fit the gap in the desk. I also added a Muirhead radio test set which had some nicely tactile rheostats.</p>
+            <p>Now I'm not sure what sparked the original idea but I have been acquiring <a href="https://www.raspberrypi.org/">Raspberry Pis</a> since the first models came out but had never done anything with the <a href="https://www.raspberrypi.org/documentation/usage/gpio/">GPIO</a> pins - due to a lack of knowledge and a suitable project. I saw that some people had used Pis to drive old gauges for clocks and bandwidth monitors and wondered if I could do something similar.</p>
             <p>I read up about it, got myself a carton of 600+ resistors of different ratings and a bunch of dupont cables. Granted I should have done this properly and read the rating of each gauge and calculated the correct resistor to use, but I just went with trial and error - starting with the largest size, switching the pin on and seeing if and how far the needle moved.</p>
-            <p>Once I had sorted out and made notes of the resistors, put the dead gauges to one side and laid out the good gauges, I cut the plywood to allow the gauges to sit slightly proud and leave the contact free at the back.</p>
+            <p>Once I had sorted out and made notes of the resistors, put the dead gauges to one side and laid out the good gauges, I cut the plywood to allow the gauges to sit slightly proud and leave the contacts free at the back.</p>
             <img src="images/ply_panel.jpg">
             <p>I just happened to have an enormous roll of metallic "sticky-back paper", so I applied that to the plywood to create a fake metal panel for the gauges to sit on.</p>
             <img src="images/instrument_panel.jpg">
@@ -60,14 +64,14 @@
                 <li>Outside temperature</li>
                 <li>The inevitable clock - using 2 gauges and 3 LEDs for over-engineering points</li>
             </ul>
-            <p>The basic principle for driving a moving coil gauge is to connect the postive and negative contacts to a GPIO pin (via a resistor) and ground respectively and then send a PWM signal via GPIO to move the needle. I used a Pi-Cobbler to connect the pi to a breadboard. My first attempt involved fitting the resistors between 2 female-ended dupont wires but the wiring became completely chaotic and kept snagging and breaking the connections.</p>
+            <p>The basic principle for driving a moving coil gauge is to connect the postive and negative contacts to a GPIO pin (via a resistor) and ground respectively and then send a <a href="https://learn.adafruit.com/adafruit-raspberry-pi-lesson-9-controlling-a-dc-motor/pwm">PWM</a> signal via GPIO to move the needle. I used a <a href="https://shop.pimoroni.com/products/adafruit-pi-t-cobbler-plus-kit-breakout-for-raspberry-pi-b">Pi T-Cobbler</a> to connect the Pi to a breadboard. At the first attempt I inserted each resistors between 2 female-ended dupont wires but the wiring became completely chaotic and kept snagging and breaking the connections.</p>
             <img src="images/inline_resistors.jpg">
             <img src="images/inline_spaghetti.jpg">
-            <p>My second attempt involved inserting the resistors into the breadboard and using short M-M dupont wires to connect to the GPIO pins and ground rails. This allowed me to tidy up the wiring so that they would not cross (in theory) but the end result was still spaghetti.</p>
+            <p>My second attempt involved inserting the resistors directly onto the breadboard and using short M-M dupont wires to connect from the gauges' positive terminals to the GPIO pins. This allowed me to tidy up the wiring so that they would not cross (in theory) but the end result was still spaghetti.</p>
             <img src="images/breadboard_resistors.jpg">
             <img src="images/spaghetti.jpg">
             <p>On reflection, the wiring might be a little neater if I ran the resistors to the ground rail and went direct from the positive terminals to the GPIO pins. At the end of the day, I am using about 2 dozen pins, so tidyness might be an impossible goal.</p>
-            <p>The code behind it is a node.js script that connects to my desktop via SSH to query hardware stats. GPIO is handled with the wiring-pi module</p>
+            <p>The code behind it is a <a href="https://nodejs.org/en/">node.js</a> script that connects to my desktop via SSH to query hardware stats. GPIO is handled with the <a href="https://www.npmjs.com/package/wiring-pi">wiring-pi</a> module</p>
             <pre><code>
 var sh =  require("child_process").spawnSync;
 var wpi = require("wiring-pi");
@@ -148,7 +152,7 @@ while (true) {//continually poll for stats
   }
 }
             </code></pre>
-            <p>Other stats are collected with:</p>
+            <p>Other stats are collected with equivalent ssh calls, using:</p>
             <table><thead><tr><th>Stat</th><th>ssh command</th></tr></thead>
             <tbody>
               <tr><td>CPU LOAD</td><td>cat /proc/stat;sleep 1;cat /proc/stat</td></tr>
@@ -193,11 +197,11 @@ function airTemp() {
             <p>A possible redesign might be to make the node.js script a <em>server</em> that accepts <em>requests</em> to display values on each dial, rather than actively seeking them from one machine.</p>
             <h3>Switches and dials</h3>
             <p>So far, so good. We have lots of outputs updating in near real-time, but how about adding some input controls?</p>
-            <p>Something I have to do every time I work from home is connect to the VPN at work, so how about making a switch for this? Obviously it couldn't be any ordinary toggle switch, it had to be a missile switch with a flip cover</p>
-            <img src="images/vpn_switch_400.gif">
-            <p>Elsewhere I've added an illuminated toggle switch to switch off the privoxy server running on another Pi, through which my daughter's devices connect to the web. This enables me to make good on the almost daily threat: <em>"If you don't brush your teeth, I'm turning the internet off"</em>.</p>
-            <p>The last input was a good deal more complex. I wanted to use at least on of the rheostats on the Muirhead radio test set to control the volume of my sound card (despite having a dedicated volume control knob on my desk as well as volume buttons on one of my keyboards). I had some vague idea about the knobs varying resistance as measured with a multimeter, but I had run out of pins on my Pi and didn't really know how to approach it, so I put it on the back burner.</p>
-            <p>A few months later I was really into cheap Arduino clones, especially the NodeMCU variants, and stumbled upon <a href="https://forum.arduino.cc/index.php?topic=52985.0">this question</a> in the Arduino forums. That gave me the confidence to try hooking up the Muirhead rheostat(s) to the analog pin on a NodeMCU using (what I think is) a voltage divider.</p>
+            <p>Something I have to do every time I work from home is connect to the VPN at work, so how about making a switch for this? Obviously it couldn't be any ordinary toggle switch, it had to be a <a href="http://www.maplin.co.uk/p/missile-style-toggle-switch-cover-n42at">missile switch</a> with a flip cover</p>
+            <img class="gif" src="images/vpn_switch_400.gif">
+            <p>Elsewhere on the panel I've added an <a href="http://www.maplin.co.uk/p/spst-illuminated-toggle-switch-red-n29bj">illuminated toggle switch</a> to switch off the <a href="https://www.privoxy.org/">privoxy server</a> running on another Pi, through which my daughter's devices connect to the web. This enables me to make good on the almost daily threat: <em>"If you don't brush your teeth, I'm turning the internet off"</em>.</p>
+            <p>The final (so far) input control was a good deal more complex. I wanted to use at least one of the rheostats on the Muirhead radio test set to control the volume of my sound card (despite having a dedicated volume control knob on my desk as well as volume buttons on one of my keyboards). I had some vague idea about the knobs varying resistance as measured with a multimeter, but I had run out of pins on my Pi and didn't really know how to approach it, so I put it on the back burner.</p>
+            <p>A few months later I was really into cheap <a href="https://www.arduino.cc/">Arduino</a> clones, especially the <a href="https://en.wikipedia.org/wiki/ESP8266">ESP8266</a> variants, and stumbled upon <a href="https://forum.arduino.cc/index.php?topic=52985.0">this question</a> in the Arduino forums. That gave me the confidence to try hooking up the Muirhead rheostat(s) to the analog pin on a <a href="http://www.nodemcu.com/index_en.html">NodeMCU</a> using (what I think is) a <a href="https://learn.sparkfun.com/tutorials/voltage-dividers">voltage divider</a> to translate resistance to voltage.</p>
             <img src="images/voltage_divider.jpg">
             <p>It detects changes in the position of 2 of the rheostats and sends a request to the PC (via the Pi) to adjust its volume. One dial controls large volume adjustments and the other fine adjustments. This is of course completely pointless, I just wanted to see if it was possible and how to do it.</p>
             <pre><code>
@@ -248,10 +252,10 @@ var server = http.createServer(function (request, response) {
             </code></pre>
             <h3>Adding screens</h3>
             <p>By day I am a software tester and tend to use a lot of monitors. On my desk in the office, I have 4 monitors, plus 2 laptops and an iPad in constant use. I cannot replicate this at the same scale in the Tardis desk as it is not really even wide enough for 2 monitors.</p>
-            <p>I started to think what I could do about this, toying with the idea of using another Pi behind the instrument panel to drive some cheap Chinese LCD panel. I didn't want to break the symmetry of the panel and was loathe to chance my luck with the expense and power demands of 2 panels but then I saw that the old <a href="https://shop.pimoroni.com/products/graphic-lcd-84x48-nokia-5110">Nokia 5110</a> screens could be re-purposed as Pi screens. This seemed like a suitably retro-modern addition to the desk, so I ordered 2. Wiring them up involved only my sewcond bout of soldering in 30 years and the smell of melting lead and flesh brought back the memories of my work experience week at Marconi.</p>
-            <p>They are not difficult to solder, my only advice would be to decide whether the wires should approach from the front or the back of the screen panel BEFORE you start. Thankfully there are 2 SPI panels available on a Pi, so I could run both screens from one Pi.</p>
+            <p>I started to think what I could do about this, toying with the idea of using another Pi to drive some cheap Chinese LCD panel. I didn't want to break the symmetry of the desk, though, and was loathe to chance my luck with the expense and power demands of 2 panels but then I saw that the old <a href="https://shop.pimoroni.com/products/graphic-lcd-84x48-nokia-5110">Nokia 5110</a> screens could be re-purposed as Pi screens. This seemed like a suitably retro-modern addition to the desk, so I ordered 2. Wiring them up involved only my second bout of soldering in 30 years and the smell of melting lead and flesh brought back the memories of my work experience week at Marconi.</p>
+            <p>They are not difficult to solder, my only advice would be to decide whether the wires should approach from the front or the back of the screen panel BEFORE you start. There are 2 SPI channels available on a Pi, so I could run both screens from one Pi.</p>
             <img src="images/icanhaz_lcds.jpg">
-            <p>I use the screens to show the sender and subject of my latest emails. Work on the left and personal on the right. The software runs on the Pi, using the <a href="https://www.npmjs.com/package/mail-notifier">mail-notifier</a> node.js module to poll 2 email accounts and a <a href="https://github.com/adafruit/Adafruit_Nokia_LCD">python script</a> to update the screens. When a new email arrives, the Pi switches on the screen backlight and lights up an LED for 30 seconds, then blinks it for another 30 in a usually vain attempt to get me to pay attention.</p>
+            <p>I use the screens to show the sender and subject of my latest emails. Work on the left and personal on the right. The software runs on the Pi, using the <a href="https://www.npmjs.com/package/mail-notifier">mail-notifier</a> node.js module to poll 2 email accounts and a <a href="https://github.com/adafruit/Adafruit_Nokia_LCD">python script</a> to update the screens. When a new email arrives, the Pi switches on the screen backlight and lights up an LED for 30 seconds, then blinks it for another 30 - in a usually vain attempt to get me to pay attention.</p>
             <pre><code>
 //node.js script to poll email and send updates to 
 //a local python server to update the Nokia screens
@@ -482,9 +486,9 @@ if __name__ == "__main__":
               
             </code></pre>
             <h3>Moar screens</h3>
-            <p>Inevitably, this wasn't enough screen real estate, so I turned my attention to other useable equipment I had lying around. I dug up a Nook HD and a Nook HD+, both with cracked screens and 2 pre-flammable Samsung Galaxy Notes. The Nooks were attached to the frame of the Tardis overhead using gooseneck clamps and I used screws to attach the Notes to the 2 large gauges I wasn't using on the panel.</p>
+            <p>Inevitably, this wasn't enough screen real estate, so I turned my attention to other useable equipment I had lying around. I dug up a Nook HD and a Nook HD+, both with cracked screens and 2 pre-flammable Samsung Galaxy Notes. The Nooks were attached to the frame of the Tardis overhead using gooseneck clamps and I screwed the Notes (not through the screens) to the 2 large gauges I wasn't using on the panel.</p>
             <img src="images/screens_dark.jpg">
-            <p>Rather then having them exist as independent screens, I create 3 VNC sessions on my desktop and point the Nook HD and the 2 Notes to those sessions. I use x2x to allow my keyboard and mouse to control those sessions when I hit the screen edges of my main desktop. When I log into my desktop, I run this bash script to enable VNC/x2x control:</p>
+            <p>Rather then having them exist as independent devices, I create 3 <a href="https://en.wikipedia.org/wiki/Virtual_Network_Computing">VNC</a> sessions on my desktop and point the Nook HD and the 2 Notes to those sessions using native android clients. I use <a href="https://github.com/dottedmag/x2x">x2x</a> to allow my keyboard and mouse to control those sessions when I hit the screen edges of my main desktop. When I log into my desktop, I run this bash script to enable VNC/x2x control:</p>
             <pre><code>
 #!/bin/bash
 sudo killall Xvnc4
@@ -506,12 +510,13 @@ vncserver -geometry  1280x720
 sleep 5
 x2x -south -to :3 &
             </code></pre>
-            <p>Occasionally I run a synergy client on the (rooted) Nook HD+ to gain keyboard and mouse control but more often than not, it's simply used natively as an Android Slack client. These extra small screens allow me to display things I need to keep an eye on, such as server logs when testing or the Pi (yes another one) camera in the lounge to make sure the cat and the dog are not tearing the place up while I'm working upstairs.</p>
+            <p>Occasionally I run a <a href="https://symless.com/synergy/">synergy</a> client on the (rooted) Nook HD+ to gain keyboard and mouse control but more often than not, it's simply used natively as an Android Slack client. These extra screens allow me to display things I need to keep an eye on, such as server logs when testing or the Pi (yes another one) camera in the lounge to make sure the cat and the dog are not tearing the place apart while I'm working upstairs.</p>
+
             <h3>Enter Arduino</h3>
-            <p>More often than not, when investigating Pi hardware projects, there is usually a dismissive comment along the lines of "Pfft, overkill, why not use an Arduino?". My curiosity piqued, I treated myself to a birthday present of an Arduino Uno starter kit plus a box of sensors. Well, that opened a can of worms.</p>
-            <p>Included in the kit was a 1602 LCD display and while learning how to wire it up and drive it, I thought it would go nicely on one of the Tardis doors to provide even lower-level alerts, such as room temperatures (there were DHT-11 sensors in the kit) or the status of my Jenkins CI projects at work.</p>
-            <p>Having to keep the Arduino connected via USB was a pain and the wifi shields were inexcusably expensive, so I started to look for options with built-in wifi. I settle on the NodeMCU and the WiFi Witty Cloud (yes, seriously) as they were both Arduino IDE programmable, had GPIO pins and ESP8266 wifi and were cheap. Very, very very cheap. So I ordered a few.</p>
-            <p>My first wifi-enabled mini-screen project was to be an international cricket score display. I hooked up a NodeMCU to the 1602 screen using a million dupont wires and attached a potentiometer to use to scroll through updates for each Test nation. The NodeMCU polls the cricinfo RSS page for international cricket scores, parses out the name and score for each team and reformats it for the display.</p>
+            <p>More often than not, when investigating Pi hardware projects, there is usually a dismissive comment along the lines of "Pfft, overkill, just use an Arduino?". My curiosity piqued, I treated myself to a birthday present of an Arduino Uno (clone) <a href="http://www.elegoo.com/shop/page/3/">starter kit plus a bundle of sensors</a>. Well, that opened a can of worms. This was my first ever Sunday delivery from Amazon so I was rather bleary-eyed at work on Monday, having been up till 3AM playing with it.</p>
+            <p>Included in the kit was a <a href="https://learn.adafruit.com/character-lcds/using-a-character-lcd?view=all">1602 LCD</a> display and while learning how to wire it up and drive it, I thought it would go nicely on one of the Tardis doors to provide even lower-level alerts, such as room temperatures (there were <a href="https://learn.adafruit.com/dht/overview">DHT-11 sensors</a> in the kit) or the status of my <a href="https://jenkins.io/">Jenkins CI</a> projects at work.</p>
+            <p>Having to keep the Arduino connected via USB was a pain and the wifi shields were inexcusably expensive, so I started to look for options with built-in wifi. I settle on the NodeMCU and the <a href="https://blog.the-jedi.co.uk/2016/01/02/wifi-witty-esp12f-board/">WiFi Witty Cloud</a> (yes, seriously) as they were both Arduino IDE programmable, had GPIO pins and ESP8266 wifi and were cheap. Very, very very cheap. So I ordered a few.</p>
+            <p>My first wifi-enabled mini-screen project was to be an <a href="https://www.youtube.com/watch?v=iXC6Nizbt2c">international cricket</a> score display. I hooked up a NodeMCU to the 1602 screen using a million dupont wires and attached a potentiometer to use to scroll through updates for each Test nation. The NodeMCU polls the <a href="http://www.espncricinfo.com/ci/content/rss/feeds_rss_cricket.html">cricinfo RSS</a> page for international cricket scores, parses out the name and score for each team and reformats it for the display.</p>
             <pre><code>
 #include &lt;ESP8266WiFi.h&gt;
 #include &lt;LiquidCrystal.h&gt;
@@ -684,7 +689,7 @@ void ClockChanged()
             </code></pre>
             <img src="images/node_cricket.jpg">
             <p>Occassionally the score parser gets confused and adds a regional team but I learnt not to try to do any heavy string processing on the NodeMCU as that is not really its forte. Ideally you should use an ESP8266 device to drive some hardware by being sent simple pre-formatted messages over HTTP and avoid any complicated local processing.</p>
-            <p>Next I thought about implementing some sort of menu system using these small LCD screens. I opted for the 2004 variant to provide more space for text. Given the number of pins tied up by the first screen, I also opted for I2C screens as they only require 5V, ground and 2 control pins, leaving more pins free for buttons, lights, etc.</p>
+            <p>Next I thought about implementing some sort of menu system using these small LCD screens. I opted for the 2004 variant to provide more space for text. Given the number of pins tied up by the first screen, I also opted for <a href="https://arduino-info.wikispaces.com/LCD-Blue-I2C">I2C screens</a> as they only require 5V, ground and 2 control pins, leaving more pins free for buttons, lights, etc.</p>
             <p>So then I built a news ticker with a 2004 I2C screen showing story headlines from selected tech, science and cricket news sites. A couple of buttons were added to quickly scroll through site or stories (and just because).</p>
             <p>The news itself is aggregated by a Raspberry Pi and the headlines reformatted for display at 20x4. It runs a HTTP server that the NodeMCU can request the headlines from. This meets the principle of using the Pi for the heavy lifting and the NodeMCU for the display and input control.</p>
             <pre><code>
@@ -904,11 +909,72 @@ void loop() {
 }              
             </code></pre>
             <img src="images/node_news.jpg">
-            <p>The 3rd NodeMCU display uses a 2004 I2C again but adds an analog joystick (the analog aspect is irrelevant but, again, learning) to control a rudimentary menu system. I use the stick's horizontal axis to control menu selection and vertical axis and click to select menu items. At the moment I can choose to see temperature, RH and light level in 3 rooms where I have sensors or status reports from the Jenkins CI system at work.</p>
-            <p>Using an analog joystick (because that was what came in the sensor kit) complicated matters because the NodeMCU only has one analog port. I decided to over-engineer a solution by incorporating an MCP3008 ADC, which can translate up to 8 analog inputs to digital signals. I only needed 2 analog channels (one for each joystick axis) but I decided to use another channel for my Muirhead volume control mentioned above, freeing up the NodeMCU previously dedicated to that task.</p>
-            <p>You can define custom characters for the 1602 and 2004 displays, so I created a half block so temperatures could be displayed as bar charts. One complete block is 2 degrees C. "O" characters appear at 10 and 20C</p>
+            <p>The 3rd NodeMCU display uses a 2004 I2C again but adds an <a href="https://www.sparkfun.com/tutorials/272">analog thumbstick</a> (the analog aspect is irrelevant but, again, learning) to control a rudimentary menu system. I use the stick's horizontal axis to control menu selection and vertical axis with click to select menu items. At the moment I can choose to see temperature, RH and light level in 3 rooms where I have sensors or status reports from the Jenkins CI system at work.</p>
+            <p>Using an analog stick (because that was what came in the sensor kit) complicated matters because the NodeMCU only has one analog port. I decided to over-engineer a solution by incorporating an <a href="https://learn.adafruit.com/raspberry-pi-analog-to-digital-converters/mcp3008">MCP3008 ADC</a>, which can translate up to 8 analog inputs to digital signals. I only needed 2 analog channels (one for each joystick axis) but I decided to use a spare channel for my Muirhead volume control mentioned above, freeing up the NodeMCU previously dedicated to that task.</p>
+            <p>You can define <a href="http://mil.ufl.edu/4744/docs/lcdmanual/characterset.html">custom characters</a> for the LCD displays. I created a half-block so temperatures could be displayed as bar charts. One complete block is 2 degrees C. "O" characters appear at 10 and 20C (and 30 if that ever happens).</p>
             <img src="images/temperatures.jpg">
             <p>I have DHT-11 and light sensors attached to NodeMCUs and WiFi Witty Cloud boards in 3 rooms in the house. They all run the same http server code, responding to GET requests with the latest readings.</p>
+            <pre><code>
+//enable OTA
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+ESP8266WebServer server(80);
+
+#define HOSTNAME "WittyLight" 
+const char* ssid = "SSID";
+const char* password = "password";
+
+const int LDR = A0;//light sensor
+int LDRvalue = 0;
+
+#include <SimpleDHT.h>
+int pinDHT11 = 14;
+SimpleDHT11 dht11;
+
+void setup() {
+  Serial.begin (9600);
+  pinMode(LDR, INPUT);
+  
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  while (WiFi.waitForConnectResult() != WL_CONNECTED){
+    WiFi.begin(ssid, password);
+    Serial.println("Retrying connection...");
+  }
+  server.begin();
+  Serial.println("Server started");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  Serial.println("Ready");
+
+  server.on("/LL", sendLightLevel);
+  server.on("/TEMP", sendTEMP);
+}
+
+void sendTEMP() {
+  byte temperature = 0;
+  byte humidity = 0;
+  byte data[40] = {0};
+  if (dht11.read(pinDHT11, &temperature, &humidity, data)) {
+    server.send(400, "text/plain", "Error");
+    return;
+  }  
+  Serial.print((int)temperature); Serial.print(" *C, ");
+  Serial.print((int)humidity); Serial.println(" %");
+  server.send(200, "text/plain", (String)temperature + "," + (String)humidity);
+}
+
+void sendLightLevel() {
+  String LLvalue = (String)analogRead(LDR);
+  Serial.println(LLvalue);
+  server.send(200, "text/plain", LLvalue);
+  Serial.println("SENT");
+}
+
+void loop() {
+  server.handleClient();
+}  
+            </code></pre>
             <p>The Jenkins page in the menu uses the separation of responsibilities idea again. The code to poll Jenkins for the latest job status actually runs on my desktop and the NodeMCU just pings it for data and displays it on the screen.</p>
             <img src="images/node_jenkins.jpg">
             <h3>Enhancing a keyboard</h3>
@@ -1113,7 +1179,6 @@ void writeLED() {
 }
 
 void loop() {
-  ArduinoOTA.handle();
   server.handleClient();
   if (counteron) {
     writeCounter();
@@ -1132,8 +1197,6 @@ void loop() {
             <pre><code>
 #include &lt;ESP8266WiFi.h&gt;
 #include &lt;ESP8266HTTPClient.h&gt;
-#include &lt;ArduinoOTA.h&gt;
-
 
 int wheelPin = D6;
 int  val;
