@@ -14,6 +14,10 @@
       width: 800px;
       height: 450px;
     }
+    code {
+      max-height: 200px;
+      overflow: auto;
+    }
     </style>
 </head>
 
@@ -515,7 +519,7 @@ x2x -south -to :3 &
             <h3>Enter Arduino</h3>
             <p>More often than not, when investigating Pi hardware projects, there is usually a dismissive comment along the lines of "Pfft, overkill, just use an Arduino?". My curiosity piqued, I treated myself to a birthday present of an Arduino Uno (clone) <a href="http://www.elegoo.com/shop/page/3/">starter kit plus a bundle of sensors</a>. Well, that opened a can of worms. This was my first ever Sunday delivery from Amazon so I was rather bleary-eyed at work on Monday, having been up till 3AM playing with it.</p>
             <p>Included in the kit was a <a href="https://learn.adafruit.com/character-lcds/using-a-character-lcd?view=all">1602 LCD</a> display and while learning how to wire it up and drive it, I thought it would go nicely on one of the Tardis doors to provide even lower-level alerts, such as room temperatures (there were <a href="https://learn.adafruit.com/dht/overview">DHT-11 sensors</a> in the kit) or the status of my <a href="https://jenkins.io/">Jenkins CI</a> projects at work.</p>
-            <p>Having to keep the Arduino connected via USB was a pain and the wifi shields were inexcusably expensive, so I started to look for options with built-in wifi. I settle on the NodeMCU and the <a href="https://blog.the-jedi.co.uk/2016/01/02/wifi-witty-esp12f-board/">WiFi Witty Cloud</a> (yes, seriously) as they were both Arduino IDE programmable, had GPIO pins and ESP8266 wifi and were cheap. Very, very very cheap. So I ordered a few.</p>
+            <p>Having to keep the Arduino connected via USB was a pain and the wifi shields were inexcusably expensive, so I started to look for options with built-in wifi. I settled on the NodeMCU and the <a href="https://blog.the-jedi.co.uk/2016/01/02/wifi-witty-esp12f-board/">WiFi Witty Cloud</a> (yes, seriously) as they were both Arduino IDE programmable, had GPIO pins and ESP8266 wifi and were cheap. Very, very very cheap. So I ordered a few.</p>
             <p>My first wifi-enabled mini-screen project was to be an <a href="https://www.youtube.com/watch?v=iXC6Nizbt2c">international cricket</a> score display. I hooked up a NodeMCU to the 1602 screen using a million dupont wires and attached a potentiometer to use to scroll through updates for each Test nation. The NodeMCU polls the <a href="http://www.espncricinfo.com/ci/content/rss/feeds_rss_cricket.html">cricinfo RSS</a> page for international cricket scores, parses out the name and score for each team and reformats it for the display.</p>
             <pre><code>
 #include &lt;ESP8266WiFi.h&gt;
@@ -690,7 +694,7 @@ void ClockChanged()
             <img src="images/node_cricket.jpg">
             <p>Occassionally the score parser gets confused and adds a regional team but I learnt not to try to do any heavy string processing on the NodeMCU as that is not really its forte. Ideally you should use an ESP8266 device to drive some hardware by being sent simple pre-formatted messages over HTTP and avoid any complicated local processing.</p>
             <p>Next I thought about implementing some sort of menu system using these small LCD screens. I opted for the 2004 variant to provide more space for text. Given the number of pins tied up by the first screen, I also opted for <a href="https://arduino-info.wikispaces.com/LCD-Blue-I2C">I2C screens</a> as they only require 5V, ground and 2 control pins, leaving more pins free for buttons, lights, etc.</p>
-            <p>So then I built a news ticker with a 2004 I2C screen showing story headlines from selected tech, science and cricket news sites. A couple of buttons were added to quickly scroll through site or stories (and just because).</p>
+            <p>So then I built a news ticker with a 2004 I2C screen showing story headlines from selected tech, science and cricket news sites. A couple of buttons were added to quickly scroll through site or stories (and just because I hadn't used any yet).</p>
             <p>The news itself is aggregated by a Raspberry Pi and the headlines reformatted for display at 20x4. It runs a HTTP server that the NodeMCU can request the headlines from. This meets the principle of using the Pi for the heavy lifting and the NodeMCU for the display and input control.</p>
             <pre><code>
 var feeds = [ 
@@ -909,13 +913,12 @@ void loop() {
 }              
             </code></pre>
             <img src="images/node_news.jpg">
-            <p>The 3rd NodeMCU display uses a 2004 I2C again but adds an <a href="https://www.sparkfun.com/tutorials/272">analog thumbstick</a> (the analog aspect is irrelevant but, again, learning) to control a rudimentary menu system. I use the stick's horizontal axis to control menu selection and vertical axis with click to select menu items. At the moment I can choose to see temperature, RH and light level in 3 rooms where I have sensors or status reports from the Jenkins CI system at work.</p>
+            <p>The 3rd NodeMCU-attached display uses a 2004 I2C again but adds an <a href="https://www.sparkfun.com/tutorials/272">analog thumbstick</a> (the analog aspect is irrelevant but, again, learning) to control a rudimentary menu system. I use the stick's horizontal axis to control menu selection and vertical axis with click to select menu items. At the moment I can choose to see temperature, RH and light level in 3 rooms where I have sensors or status reports from the Jenkins CI system at work.</p>
             <p>Using an analog stick (because that was what came in the sensor kit) complicated matters because the NodeMCU only has one analog port. I decided to over-engineer a solution by incorporating an <a href="https://learn.adafruit.com/raspberry-pi-analog-to-digital-converters/mcp3008">MCP3008 ADC</a>, which can translate up to 8 analog inputs to digital signals. I only needed 2 analog channels (one for each joystick axis) but I decided to use a spare channel for my Muirhead volume control mentioned above, freeing up the NodeMCU previously dedicated to that task.</p>
             <p>You can define <a href="http://mil.ufl.edu/4744/docs/lcdmanual/characterset.html">custom characters</a> for the LCD displays. I created a half-block so temperatures could be displayed as bar charts. One complete block is 2 degrees C. "O" characters appear at 10 and 20C (and 30 if that ever happens).</p>
             <img src="images/temperatures.jpg">
-            <p>I have DHT-11 and light sensors attached to NodeMCUs and WiFi Witty Cloud boards in 3 rooms in the house. They all run the same http server code, responding to GET requests with the latest readings.</p>
+            <p>I have DHT-11 and light sensors attached to NodeMCUs and WiFi Witty Cloud boards in 3 rooms in the house. They all run similar http server code, responding to GET requests with the latest readings.</p>
             <pre><code>
-//enable OTA
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 ESP8266WebServer server(80);
@@ -955,7 +958,7 @@ void sendTEMP() {
   byte temperature = 0;
   byte humidity = 0;
   byte data[40] = {0};
-  if (dht11.read(pinDHT11, &temperature, &humidity, data)) {
+  if (dht11.read(pinDHT11, &amp;temperature, &amp;humidity, data)) {
     server.send(400, "text/plain", "Error");
     return;
   }  
@@ -975,14 +978,14 @@ void loop() {
   server.handleClient();
 }  
             </code></pre>
-            <p>The Jenkins page in the menu uses the separation of responsibilities idea again. The code to poll Jenkins for the latest job status actually runs on my desktop and the NodeMCU just pings it for data and displays it on the screen.</p>
+            <p>The Jenkins page in the menu uses the separation of responsibilities idea again. The code to poll Jenkins for the latest job status actually runs on my desktop and the NodeMCU just pings it for formatted data and displays it on the screen.</p>
             <img src="images/node_jenkins.jpg">
             <h3>Enhancing a keyboard</h3>
-            <p>My Corsair K-65 is a perfectly fine mechanical keyboard but I did shoot myself in the foot somewhat be replacing all the letter keys with blank keycaps. Although I have been using keyboards regularly for more than 3 decades, I am by no means a touch typist. I can cope quite well with general typing but I need to use a lot of passwords for work and with blank keycaps and no visual feedback when typing, it can become quite annoying.</p>
+            <p>My <a href="http://www.corsair.com/en-gb/vengeance-k65-compact-mechanical-gaming-keyboard">Corsair K65</a> is a perfectly fine mechanical keyboard but I did shoot myself in the foot somewhat be replacing all the letter keys with blank keycaps. Although I have been using keyboards regularly for more than 3 decades, I am by no means a touch typist. I can cope quite well with general typing but I need to use a lot of passwords for work and with blank keycaps combined with no visual feedback when typing becomes quite annoying.</p>
             <img src="images/corsair_blanks.jpg">
             <p>Just before Xmas I spotted some <a href="http://cherryamericas.com/product/7000-series-compact-msr-keyboard/">Cherry G81-7000</a> retail keyboards on eBay. They had built in card-readers and programmable keys. I thought "they are mechanical keyboards, how bad can they be to type on?" Actually <a href="https://deskthority.net/wiki/Cherry_MY">pretty terrible</a>. They don't feel mechanical at all but for £5 it will do. I stripped out the card-reader and added a NodeMCU wired to 2 small displays - one LED and one LCD - and added 3 leds for visual flair. I also replaced some keys with spare blank black keycaps for extra edginess. The whole thing needed a good clean as every keycap had years of grime caked on. I removed this with the harshest cleaning product known to man - baby wipes. Pulling all the keycaps also revealed a number of clothes tags and paper-clips stuck under several keys. After that the typing experience improved but still not great.</p>
             <img src="images/kbord.jpg">
-            <p>The NodeMCU in the keyboard accepts HTTP GET requests with parameters for display and message.</p>
+            <p>The NodeMCU in the keyboard accepts HTTP GET requests with parameters for message and paths for each display.</p>
             <pre><code>
 #include &lt;ESP8266WiFi.h&gt;
 #include &lt;ESP8266WebServer.h&gt;
@@ -1189,10 +1192,10 @@ void loop() {
             <p>The Pi running the instrument panel sends the keyboard LCD periodic weather updates and displays today's date every hour on the LED. The LED can also show a minute and second counter which can be started and stopped via HTTP.</p>
             <img src="images/ice_pellets.jpg">
             <h3>Getting Exercised</h3>
-            <p>Over the last few months I have developed a form of vertigo that leaves me almost completely intolerant of any kind of transport. While I waiting what seems like forever for a proper diagnosis and treatment, my employers have been kind enough to allow me to work from home. My desk help me to work efficiently and stay in contact with the team, but even though I avoid sitting all day, being virtually housebound is causing health problems. During the course of 2016 I managed to lose 10 kilos in weight over 6 months through careful eating and regular low impact exercise. Having lost most of my access to exercise, I have regained 5 kilos, so I needed to find a way around this.</p>
-            <p>My condition is completely unpredictable and some days I can walk round the block without any problems, other days I cannot make it to the end of the road. I decided to get an exercise bike, nothing fancy, just one that could sit in front of my desk that I could use sitting on a stool. I ordered one for £30 to see how I got on with it. It came with a small computer showing me RPM, elapsed time, equivalent road speed and calories burnt. It was laughably inaccurate, so I decided to replace it. It is designed to be detached easily (no idea why) and on closer inspection, it is just a hall effect sensor used to time the revolutions of a magnet embedded in the wheel. As luck would have it, the Arduino sensor kit included a couple of hall sensors, so it was an easy swap out to replace the original computer with a NodeMCU.</p>
+            <p>A few months ago I developed a form of vertigo that leaves me almost completely intolerant of any kind of transport. While waiting what seems like forever for a proper diagnosis and treatment, my employers have been kind enough to allow me to work from home. My desk helps me to work efficiently and stay in contact with the team, but even though I avoid sitting all day, being virtually housebound is causing health problems. During the course of 2016 I managed to lose 10 kilos in weight over 6 months through careful eating and regular low impact exercise. Having lost most of my access to exercise, I have regained 5 kilos, so I needed to find a way around this.</p>
+            <p>My condition is completely unpredictable and some days I can walk round the block without any problems, other days I cannot make it to the end of the road. I decided to get an exercise bike, nothing fancy, just one that could sit in front of my desk that I could use sitting on a stool. I ordered one <a href="https://oypla.com/sports-leisure/indoor-sports/arm-leg-mini-cycle-pedal-exercise-resistance-bike-fitness-gym">for £30</a> to see how I got on with it. It came with a small computer showing me RPM, elapsed time, equivalent road speed and calories burnt. It was laughably inaccurate, so I decided to replace it. It is designed to be detached easily (no idea why) and on closer inspection, it is just a <a href="https://en.wikipedia.org/wiki/Hall_effect_sensor">hall effect sensor</a> used to time the revolutions of a magnet embedded in the wheel. As luck would have it, the Arduino sensor kit included a couple of hall sensors, so it was an easy and elegant swap out to replace the original computer with a NodeMCU.</p>
             <img src="images/node_bike.jpg">
-            <p>I run a routine on it to time the usage and rpm speed of the bike and transmit the details to the small screens on the keyboard. The elapsed time in minutes and seconds shows on the LED and spin count and speed on the LCD. All stats are transmitted to my desktop for storage and reset after the bike is unused for 5 seconds.</p>
+            <p>I run a routine on it to time the usage and rpm speed of the bike and transmit the details to the small screens on the keyboard. The elapsed time in minutes and seconds shows on the LED and the spin count and rpm speed on the LCD. All stats are transmitted to my desktop for storage and are reset after the bike is unused for 5 seconds.</p>
             <img src="images/bike_displays.jpg">
             <pre><code>
 #include &lt;ESP8266WiFi.h&gt;
@@ -1327,7 +1330,8 @@ void  loop() {
   }
 }
             </code></pre>
-            <p>The timings are started as soon as the pedals are turned once. The bike also sends a request to my desktop to start playing a POV bike video on YouTube to stop me from getting bored. I use the tv# interface to YouTube so it starts full-screen and can be controlled easily with the cursor keys. I did a bit of initial searching to find dozens of videos to choose from (at random) but related videos can be selected while the bike is running. If a session lasts longer than 100 spins, it is logged so that I can partake in the current trend of obssessively gathering ultimately meaningless stats abut my exercise regime.</p>
+            <p>The timings are started as soon as the pedals are turned once. The bike also sends a request to my desktop to start playing a POV bike video on YouTube to stop me from getting bored. I use the tv# interface to YouTube so it starts full-screen and can be controlled easily with the cursor keys. I may stick with the tv# interface as videos seem to start faster and best of all there is no comments section.</p>
+            <p>I did a bit of initial searching to find a couple of dozen videos that are choosen (at random) but related videos can be selected while the bike is running. If a session lasts longer than 100 spins, it is logged so that I can partake in the current trend of obssessively gathering ultimately meaningless stats abut my exercise regime.</p>
             <pre><code>
 const http = require("http");
 const url = require("url");
