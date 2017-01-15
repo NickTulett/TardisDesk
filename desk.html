@@ -66,6 +66,131 @@
             <p>My second attempt involved inserting the resistors into the breadboard and using short M-M dupont wires to connect to the GPIO pins and ground rails. This allowed me to tidy up the wiring so that they would not cross (in theory) but the end result was still spaghetti.</p>
             <img src="images/breadboard_resistors.jpg">
             <img src="images/spaghetti.jpg">
+            <p>On reflection, the wiring might be a little neater if I ran the resistors to the ground rail and went direct from the positive terminals to the GPIO pins. At the end of the day, I am using about 2 dozen pins, so tidyness might be an impossible goal.</p>
+            <p>The code behind it is a node.js script that connects to my desktop via SSH to query hardware stats. GPIO is handled with the wiring-pi module</p>
+            <pre><code>
+var sh =  require("child_process").spawnSync;
+var wpi = require("wiring-pi");
+wpi.wiringPiSetupGpio();
+
+function sshCall(machine, command){
+  var host = machine.ip;
+  var user = machine.user;
+  try {
+    var returnValue = 
+      sh(
+        "ssh", 
+        [user + "@" + host, command]
+      ).stdout.toString();
+    return returnValue;
+  } catch (e) {
+    return null;
+  }
+}
+
+function cpuLoad(machine) {
+  var cpuuse = 1;
+  try {
+    var cpu = sshCall(machine, "cat /proc/stat;sleep 1;cat /proc/stat");
+    if (!cpu) {return 0;}
+    cpu = cpu.split(/cpu  /);
+    var cpuold = cpu[1].split(/ /).slice(0,4);
+    var cpunew = cpu[2].split(/ /).slice(0,4);
+    var user = +cpunew[0] - +cpuold[0];
+    var nice = +cpunew[1] - +cpuold[1];
+    var syst = +cpunew[2] - +cpuold[2];
+    var idle = +cpunew[3] - +cpuold[3];
+    cpuuse = idle / (user + nice + syst + idle);
+  } finally {
+    return (100 * (1 - cpuuse));
+  }
+}
+//...other stat collector routines...
+var gauges = {
+    "CPUtemp": {
+      "pin": 22,
+      "scalemin": 0,
+      "scalemax": 100,//PWM value on GPIO that reaches max on the dial
+      "valuemax": 100,//maximum value expected for temperature
+      "gauge": "ENG TEMP",
+      "open": false
+    }
+//...other pin definitions...
+}              
+var allStats = {};
+
+while (true) {//continually poll for stats
+  var machine = {name: "desktop", user: "me", ip: "192.168.10.10"};
+  allStats[machine.name] = {
+    "cpu": cpuLoad(machine),
+    "ram": memLoad(machine),
+    "hdd": diskFull(machine)
+  };
+  //...call other stat collectors.../
+  for (var stat in allStats[machine.name]) {
+    if (gauges[stat]) {
+      var pin = gauges[stat].pin;
+      var statValue = allStats[machine.name][stat];
+      if (statValue &gt; gauges[stat].valuemax) {
+        statValue = gauges[stat].valuemax;
+      }
+      var pinValue = gauges[stat].scalemin 
+        + ((gauges[stat].scalemax 
+        - gauges[stat].scalemin) 
+        * (statValue / gauges[stat].valuemax));
+      if (!gauges[stat].open) {
+        wpi.softPwmCreate(pin, Math.round(pinValue), 100);
+        gauges[stat].open = true;
+      } else {
+        wpi.softPwmWrite(pin, ~~Math.round(pinValue));
+      }
+    }
+  }
+}
+            </code></pre>
+            <p>Other stats are collected with:</p>
+            <table><thead><tr><th>Stat</th><th>ssh command</th></tr></thead>
+            <tbody>
+              <tr><td>CPU LOAD</td><td>cat /proc/stat;sleep 1;cat /proc/stat</td></tr>
+              <tr><td>MEMORY</td><td>free</td></tr>
+              <tr><td>DISK USE</td><td>df | grep '/dev/sd'</td></tr>
+              <tr><td>CPU TEMP</td><td>sensors</td></tr>
+              <tr><td>GPU TEMP</td><td>nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader</td></tr>
+              <tr><td>NET</td><td>ifstat -i eth2 1 4</td></tr>
+              <tr><td>VPN</td><td>ifstat -i tun0 1 4</td></tr>
+              <tr><td>TIME</td><td>date</td></tr>
+            </tbody></table>
+            <p>The script also pings the <a href="http://api.wunderground.com/weather/api/">Weather Underground API</a> every 30 minutes for local weather.</p>
+            <pre><code>
+var lastTemp = 0;
+var WUcallTime = 0;
+function airTemp() {
+  if (new Date() - WUcallTime &lt; (30*60*1e3)) {
+    return lastTemp;
+  }
+  WUcallTime = new Date();
+  console.log("Fetching from WU " + WUcallTime);
+  var conditions = 
+    JSON.parse(
+      ss("wget -q -O- 
+        http://api.wunderground.com/api/{key}/geolookup/conditions/q/IA/{location}.json"
+    ).toString());
+  var timestamp = (new Date).toLocaleTimeString();
+  timestamp = ("   " + timestamp + "   ").slice(0, 16);
+  var weatherString = conditions.current_observation.weather;
+  while (weatherString.length < 16) {
+    weatherString = " " + weatherString + " ";
+  }
+  //weather conditions displayed on keyboard LCD (see below)
+  ss("wget -q -O- 'http://kbord.local/LCD?msg=" + timestamp + weatherString + "'");
+  console.log(conditions.current_observation.weather);
+  lastTemp = conditions.current_observation.temp_c;
+  console.log(lastTemp);
+  //return temperature to display on gauge
+  return lastTemp;
+}              
+            </code></pre>
+            <p>A possible redesign might be to make the node.js script a <em>server</em> that accepts <em>requests</em> to display values on each dial, rather than actively seeking them from one machine.</p>
             <h3>Switches and dials</h3>
             <p>So far, so good. We have lots of outputs updating in near real-time, but how about adding some input controls?</p>
             <p>Something I have to do every time I work from home is connect to the VPN at work, so how about making a switch for this? Obviously it couldn't be any ordinary toggle switch, it had to be a missile switch with a flip cover</p>
