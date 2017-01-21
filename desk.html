@@ -1518,8 +1518,8 @@ void loop() {
     sh("wget -q -O- 'http://tardisblues.local/lighton'");
   }
             </code></pre>
-            <p>The lower panel is mostly just decorative. The illuminated button on the left is a remote power switch for the PC, so I don't have to move the panel to switch it on an off. If you choose to fit one, I would advise doing so <em>before</em> fitting your PCI cards, power supply and drives, otherwise it becomes the world's hardest game of Operation.</p>
-            <p>None of the gauges on this panel work, so I added the mandatory blinkenlights to liven it up. This is a bank of 2x5 LEDs powered by a Raspberry Pi Zero. It also has a HC-SR04 sensor so the lights only work when I am near the desk. I could have used the readings from the other sensor but I wanted to learn the code for both platforms. The lights cycle through a sequence of ordered and random flashing patterns.</p>
+            <p>The lower panel is mostly just decorative. The illuminated button on the left is a remote power switch for the PC, so I don't have to move the panel to switch it on and off. If you choose to fit one, I would advise doing so <em>before</em> fitting your PCI cards, power supply and drives, otherwise it becomes the world's hardest game of Operation.</p>
+            <p>None of the gauges on this panel work, so I added the obligatory <a href="https://en.wikipedia.org/wiki/Blinkenlights">blinkenlights</a> to liven it up. This is a bank of 2x5 LEDs powered by a Raspberry Pi Zero. It also has a HC-SR04 sensor so the lights only work when I am near the desk. I could have used the readings from the other sensor but I wanted to learn the code for both platforms. The lights cycle through a sequence of ordered and random flashing patterns.</p>
             <pre><code>
 var wpi = require("wiring-pi");
 wpi.wiringPiSetupGpio();
@@ -1642,7 +1642,7 @@ process.on('SIGINT', exitHandler);
 //catches uncaught exceptions
 process.on('uncaughtException', exitHandler);
             </code></pre>
-            <p>A separate routine runs to call start and stop the light show according to the ultrasonic reading:</p>
+            <p>A separate routine runs to start and stop the light show according to the ultrasonic reading using the <a href="https://www.npmjs.com/package/r-pi-usonic">r-pi-usonic</a> npm module:</p>
             <pre><code>
 var usonic = require("r-pi-usonic");
 var lightshow = false;
