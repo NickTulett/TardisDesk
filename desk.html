@@ -1332,7 +1332,7 @@ void  loop() {
 }
             </code></pre>
             <p>The timings are started as soon as the pedals are turned once. The bike also sends a request to my desktop to start playing a POV bike video on YouTube to stop me from getting bored. I use the tv# interface to YouTube so it starts full-screen and can be controlled easily with the cursor keys. I may stick with the tv# interface for general viewing as videos seem to start faster and best of all <em>there is no comments section</em>.</p>
-            <p>I did a bit of initial searching to find a couple of dozen videos that are choosen (at random) but related videos can be selected while the bike is running. If a session lasts longer than 100 spins, it is logged so that I can partake in the current trend of obssessively gathering ultimately meaningless stats about my exercise regime.</p>
+            <p>I did a bit of initial searching to find a couple of dozen videos that are chosen (at random) but related videos can be selected while the bike is running. If a session lasts longer than 100 spins, it is logged so that I can partake in the current trend of obssessively gathering ultimately meaningless stats about my exercise regime.</p>
             <pre><code>
 const http = require("http");
 const url = require("url");
@@ -1391,6 +1391,133 @@ http.createServer(function (request, response) {
             </code></pre>
             <p>The complete desk:</p>
             <img src="images/node_bike_video.jpg">
+            <h3>Further enhancements</h3>
+            <p>The nokia screens and flashing LEDs were not doing a good enough job of alerting me to new emails, so I decided to use the revolving blue police light on top of the tardis. I spliced some wires into its switch and hooked them up to a relay, driven by a Wifi Witty Cloud board.</p>
+            <img src="images/witty_relay.jpg">
+            <p>I also connected an ultrasonic sensor, so that the light only goes off if I am standing at the desk. The noise of the relay combined with the abruptness of the light is a bit too alarming to be going off in the middle of the night.</p>
+            <p>The relay is controlled through GET calls to an HTTP server, which decides whether to switch the light on based on the distance measured by the </p>
+            <pre><code>
+//enable OTA
+#include <ESP8266WiFi.h>
+#include <ArduinoOTA.h>
+#include <ESP8266WebServer.h>
+
+ESP8266WebServer server(80);
+
+#define HOSTNAME "TardisBlues"
+const char* ssid = "SSID";
+const char* password = "password";
+
+const int LDR = A0;
+const int BUTTON = 4;
+const int BLED = 2;
+const int RED = 15;
+const int GREEN = 12;
+const int BLUE = 13;
+int LDRvalue = 0;
+
+String IPaddress;
+
+//relay pin
+#define LIGHT 5
+//ultrasonic pins
+#define TRIGGER 14
+#define ECHO    16
+
+void setup() {
+  Serial.begin (9600);
+
+  pinMode(LIGHT, OUTPUT);
+  pinMode(TRIGGER, OUTPUT);
+  pinMode(ECHO, INPUT);
+  
+  pinMode(LDR, INPUT);
+  pinMode(BUTTON, INPUT);
+  pinMode(RED, OUTPUT);
+  pinMode(GREEN, OUTPUT);
+  pinMode(BLUE, OUTPUT);
+  pinMode(BLED, OUTPUT);
+
+  analogWrite(RED, 1024);
+  analogWrite(GREEN, 0);
+  analogWrite(BLUE, 0);
+  digitalWrite(LIGHT, LOW);
+  digitalWrite(BLED, HIGH);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  while (WiFi.waitForConnectResult() != WL_CONNECTED){
+    WiFi.begin(ssid, password);
+    Serial.println("Retrying connection...");
+  }
+  server.begin();
+  Serial.println("Server started");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  analogWrite(RED, 0);
+  analogWrite(GREEN, 0);
+  analogWrite(BLUE, 0);
+
+  server.on("/lighton", lighton);
+  server.on("/lightoff", lightoff);
+}
+
+boolean detected;
+
+void lightoff() {
+  digitalWrite(LIGHT, LOW);
+  server.send(200, "text/plain", "Light off");
+}
+void lighton() {
+  if (detected && (digitalRead(LIGHT) == LOW)) {
+    digitalWrite(LIGHT, HIGH);
+    delay(5000);
+  }
+  server.send(200, "text/plain", "Light on");
+  lightoff();
+}
+void ledon() {
+  detected = true;
+  analogWrite(RED, 128););
+  server.send(200, "text/plain", "LED on");
+}
+void ledoff() {
+  detected = false;
+  analogWrite(RED, 0);
+  analogWrite(GREEN, 0);
+  analogWrite(BLUE, 0);
+  server.send(200, "text/plain", "LED Off");
+}
+
+void loop() {
+  server.handleClient();
+  
+  long duration, distance;
+  
+  digitalWrite(TRIGGER, LOW);  
+  delayMicroseconds(2); 
+  
+  digitalWrite(TRIGGER, HIGH);
+  delayMicroseconds(10); 
+  
+  digitalWrite(TRIGGER, LOW);
+  duration = pulseIn(ECHO, HIGH);
+  distance = (duration/2) / 29.1;
+
+  if (distance < 50 || distance > 300) {
+    ledon();
+  } else {
+    ledoff();  
+  }
+  delay(1000);
+}  
+            </code></pre>
+            <p>Then I just added a few lines to the raspberry pi mail checker:</p>
+            <pre><code>
+  if (newEmail) {
+    sh("wget -q -O- 'http://tardisblues.local/lighton'");
+  }
+            </code></pre>
         </section>
     </div>
     <!-- FOOTER  -->
