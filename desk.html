@@ -237,7 +237,7 @@ void loop() {
 
 function volumeLevel(dialValue) {
 //the NodeMCU analog reading is from 0 to 1024 (in reverse order)
-//7.3 is a scalar arrived at by trial and error
+//7.3 is a multiplier arrived at by trial and error
 //to translate this to a suitable percentage
   return Math.floor((1024 - dialValue) / 7.3);
 }
@@ -1397,10 +1397,8 @@ http.createServer(function (request, response) {
             <p>I also connected an <a href="http://howtomechatronics.com/tutorials/arduino/ultrasonic-sensor-hc-sr04/">HC-SR04 ultrasonic sensor</a>, so that the light only goes off if I am standing at the desk. The noise of the relay combined with the abruptness of the light is a bit too alarming to be going off in the middle of the night.</p>
             <p>The relay is controlled through GET calls to an HTTP server, which decides whether to switch the light on based on the distance measured by the ultrasonic sensor.</p>
             <pre><code>
-//enable OTA
-#include <ESP8266WiFi.h>
-#include <ArduinoOTA.h>
-#include <ESP8266WebServer.h>
+#include &lt;ESP8266WiFi.h&gt;
+#include &lt;ESP8266WebServer.h&gt;
 
 ESP8266WebServer server(80);
 
@@ -1504,7 +1502,7 @@ void loop() {
   duration = pulseIn(ECHO, HIGH);
   distance = (duration/2) / 29.1;
 
-  if (distance < 50 || distance > 300) {
+  if (distance 50 || distance > 300) {
     ledon();
   } else {
     ledoff();  
