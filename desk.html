@@ -1392,10 +1392,10 @@ http.createServer(function (request, response) {
             <p>The complete desk:</p>
             <img src="images/node_bike_video.jpg">
             <h3>Further enhancements</h3>
-            <p>The nokia screens and flashing LEDs were not doing a good enough job of alerting me to new emails, so I decided to use the revolving blue police light on top of the tardis. I spliced some wires into its switch and hooked them up to a relay, driven by a Wifi Witty Cloud board.</p>
+            <p>The nokia screens and flashing LEDs were not doing a good enough job of alerting me to new emails, so I decided to use the revolving blue police light on top of the tardis. I spliced some wires into its switch and hooked them up to a <a href="https://arduino-info.wikispaces.com/ArduinoPower">relay</a>, driven by a Wifi Witty Cloud board.</p>
             <img src="images/witty_relay.jpg">
-            <p>I also connected an ultrasonic sensor, so that the light only goes off if I am standing at the desk. The noise of the relay combined with the abruptness of the light is a bit too alarming to be going off in the middle of the night.</p>
-            <p>The relay is controlled through GET calls to an HTTP server, which decides whether to switch the light on based on the distance measured by the </p>
+            <p>I also connected an <a href="http://howtomechatronics.com/tutorials/arduino/ultrasonic-sensor-hc-sr04/">HC-SR04 ultrasonic sensor</a>, so that the light only goes off if I am standing at the desk. The noise of the relay combined with the abruptness of the light is a bit too alarming to be going off in the middle of the night.</p>
+            <p>The relay is controlled through GET calls to an HTTP server, which decides whether to switch the light on based on the distance measured by the ultrasonic sensor.</p>
             <pre><code>
 //enable OTA
 #include <ESP8266WiFi.h>
