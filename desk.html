@@ -1518,6 +1518,156 @@ void loop() {
     sh("wget -q -O- 'http://tardisblues.local/lighton'");
   }
             </code></pre>
+            <p>The lower panel is mostly just decorative. The illuminated button on the left is a remote power switch for the PC, so I don't have to move the panel to switch it on an off. If you choose to fit one, I would advise doing so <em>before</em> fitting your PCI cards, power supply and drives, otherwise it becomes the world's hardest game of Operation.</p>
+            <p>None of the gauges on this panel work, so I added the mandatory blinkenlights to liven it up. This is a bank of 2x5 LEDs powered by a Raspberry Pi Zero. It also has a HC-SR04 sensor so the lights only work when I am near the desk. I could have used the readings from the other sensor but I wanted to learn the code for both platforms. The lights cycle through a sequence of ordered and random flashing patterns.</p>
+            <pre><code>
+var wpi = require("wiring-pi");
+wpi.wiringPiSetupGpio();
+
+//LED pin connections
+var rows = [
+  [4, 6, 7, 20, 22],
+  [27, 16, 12, 26, 17]
+];
+var loops = [
+  [4, 6, 7, 20, 22, 20, 7, 6],
+  [27, 16, 12, 26, 17, 26, 12, 16]
+];
+
+var pins = rows[0].concat(rows[1]);
+
+function randomTime() {
+  return 250 + ~~(Math.random() * 2e3);
+}
+
+function lighton(pin) {
+  wpi.digitalWrite(pin, 1);
+}
+function lightoff(pin) {
+  wpi.digitalWrite(pin, 0);
+}
+
+function blink(pin) {
+  wpi.digitalWrite(pin, 1 - wpi.digitalRead(pin));
+}
+
+var blinkers = {};
+
+function blinker(pin) {
+  if (blinkers[pin]) {
+    clearInterval(blinkers[pin]);
+  }
+  blinkers[pin] = setInterval(blink, randomTime(), pin);
+}
+
+function clearpins() {
+  for(var blinker in blinkers) {
+    clearInterval(blinkers[blinker]);
+  }
+  blinkers = {};
+  pins.forEach(function (pin) {
+    wpi.pinMode(pin, wpi.OUTPUT);
+    wpi.digitalWrite(pin, 0);
+  });
+}
+
+function random() {
+  clearpins();
+  pins.forEach(function (pin) {
+    blinkers["rnd" + pin] = setInterval(blinker, randomTime(), pin);
+  });
+  setTimeout(cylon, 10e3);
+}
+
+function shiftLeft(pins) {
+  var leftpin = pins.shift();
+  pins.push(leftpin);
+  return leftpin;
+}
+function shiftRight(pins) {
+  var rightpin = pins.pop();
+  pins.unshift(rightpin);
+  return rightpin;
+}
+
+function rowLights(lightrows, rowbreak) {
+  clearpins();
+  rowbreak = rowbreak || 0;
+
+  blinkers["toprow"] = setInterval(function () {
+    lighton(lightrows[0][0]);
+    shiftLeft(lightrows[0]);
+    setTimeout(lightoff, 100, lightrows[0][lightrows[0].length - 1]);
+  }, 150);
+
+  blinkers["bottomrow"] = setInterval(function () {
+    lighton(lightrows[1][rowbreak]);
+    shiftRight(lightrows[1]);
+    setTimeout(lightoff, 100, lightrows[1][rowbreak + 1]);
+  }, 150);
+}
+
+function cylon() {
+  rowLights(loops);
+  setTimeout(wheel, 5e3);
+}
+function anticylon() {
+  rowLights(loops, 4);
+  setTimeout(random, 5e3);
+}
+
+function wheel() {
+  rowLights(rows);
+  setTimeout(anticylon, 5e3);
+}
+
+clearpins();
+random();
+
+process.stdin.resume();//so the program will not close instantly
+
+function exitHandler() {
+    pins.forEach(function (clockpin) {
+      wpi.digitalWrite(clockpin, 0);
+    });
+    process.exit();
+}
+
+//do something when app is closing
+process.on('exit', exitHandler);
+
+//catches ctrl+c event
+process.on('SIGINT', exitHandler);
+
+//catches uncaught exceptions
+process.on('uncaughtException', exitHandler);
+            </code></pre>
+            <p>A separate routine runs to call start and stop the light show according to the ultrasonic reading:</p>
+            <pre><code>
+var usonic = require("r-pi-usonic");
+var lightshow = false;
+var sh = require("child_process");
+
+usonic.init(function (err) {
+  if (err) {
+    console.log(err);
+  } else {
+    var sensor = usonic.createSensor(24, 23, 1000);
+    setInterval(function () {
+      if (sensor() < 75) {
+        if (!lightshow) {
+          lightshow = sh.spawn("node", ["lightshow.js"]);
+        }
+      } else {
+        if (lightshow) {
+          lightshow.kill("SIGINT");
+          lightshow = null;
+        }
+      }
+    }, 5e3);
+  }
+});
+            </code></pre>
         </section>
     </div>
     <!-- FOOTER  -->
